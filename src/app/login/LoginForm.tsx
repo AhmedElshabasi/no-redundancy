@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import styles from './ucalgary-login.module.css'
 
 export function LoginForm() {
   const router = useRouter()
@@ -10,10 +11,17 @@ export function LoginForm() {
   const nextPath = searchParams.get('next') || '/receive'
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
-  const [email, setEmail] = useState('')
+  const [emailLocal, setEmailLocal] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const email = (() => {
+    const raw = emailLocal.trim()
+    if (!raw) return ''
+    if (raw.includes('@')) return raw
+    return `${raw}@ucalgary.ca`
+  })()
 
   const submit = async () => {
     setError(null)
@@ -49,36 +57,88 @@ export function LoginForm() {
   }
 
   return (
-    <div className="auth-row">
-      <div className="auth-title">{mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}</div>
-      <input
-        className="auth-input"
-        placeholder="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        className="auth-input"
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      {error ? <div className="error-msg">{error}</div> : null}
-      <div className="auth-actions">
-        <button className="generate-btn" onClick={submit} disabled={busy || !email || !password}>
-          {busy ? 'PLEASE WAIT…' : mode === 'signin' ? 'SIGN IN' : 'SIGN UP'}
+    <>
+      <div className={styles.tabs} role="tablist" aria-label="Authentication mode">
+        <button
+          type="button"
+          className={`${styles.tab} ${mode === 'signin' ? styles.activeTab : ''}`}
+          onClick={() => setMode('signin')}
+          disabled={busy}
+          role="tab"
+          aria-selected={mode === 'signin'}
+        >
+          Sign in
         </button>
         <button
-          className="btn-secondary"
-          onClick={() => setMode((m) => (m === 'signin' ? 'signup' : 'signin'))}
+          type="button"
+          className={`${styles.tab} ${mode === 'signup' ? styles.activeTab : ''}`}
+          onClick={() => setMode('signup')}
           disabled={busy}
+          role="tab"
+          aria-selected={mode === 'signup'}
         >
-          {mode === 'signin' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
+          Create account
         </button>
       </div>
-    </div>
+
+      <div className={styles.field}>
+        <label htmlFor="emailLocal">Email</label>
+        <div className={styles.emailSuffix}>
+          <input
+            id="emailLocal"
+            className={styles.input}
+            placeholder="first.last"
+            type="text"
+            autoComplete="username"
+            value={emailLocal}
+            onChange={(e) => setEmailLocal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit()
+            }}
+            aria-invalid={!!error}
+          />
+        </div>
+        <div className={styles.hint}>Will sign in as <span className={styles.mono}>{email || '…@ucalgary.ca'}</span></div>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          className={styles.input}
+          placeholder="Your password"
+          type="password"
+          autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit()
+          }}
+          aria-invalid={!!error}
+        />
+      </div>
+
+      {error ? <div className={styles.errorMsg}>{error}</div> : null}
+
+      <button className={styles.primaryBtn} onClick={submit} disabled={busy || !email || !password} type="button">
+        {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+      </button>
+
+      <div className={styles.divider} aria-hidden="true">
+        <span />
+        <span>or</span>
+        <span />
+      </div>
+
+      <button
+        type="button"
+        className={styles.secondaryBtn}
+        onClick={() => setMode((m) => (m === 'signin' ? 'signup' : 'signin'))}
+        disabled={busy}
+      >
+        {mode === 'signin' ? 'Need an account? Create one' : 'Have an account? Sign in'}
+      </button>
+    </>
   )
 }
 
