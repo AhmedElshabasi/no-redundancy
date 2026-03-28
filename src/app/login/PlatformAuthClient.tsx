@@ -247,7 +247,7 @@ export function PlatformAuthClient({ supabaseConfigured }: { supabaseConfigured:
                 <input
                   type="text"
                   id="signup-first"
-                  placeholder="Jane"
+                  placeholder="Estacio"
                   className={fieldErrors.first ? 'error' : ''}
                   value={signup.first}
                   onChange={(e) => {
@@ -265,7 +265,7 @@ export function PlatformAuthClient({ supabaseConfigured }: { supabaseConfigured:
                 <input
                   type="text"
                   id="signup-last"
-                  placeholder="Doe"
+                  placeholder="Pereira"
                   className={fieldErrors.last ? 'error' : ''}
                   value={signup.last}
                   onChange={(e) => {
