@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import './platform-auth.css'
+import './sign-in-reference.css'
 
 export default function LoginLayout({ children }: { children: ReactNode }) {
-  return <div className="nr-auth-scope">{children}</div>
+  return <div id="sign-in-reference-root">{children}</div>
 }

@@ -12,7 +12,11 @@ export default async function LoginPage() {
   if (user) redirect('/receive')
 
   return (
-    <Suspense fallback={<div className="screen login-screen" style={{ background: '#1c1c1e' }} />}>
+    <Suspense
+      fallback={
+        <div id="screen-login" className="screen active" aria-hidden style={{ background: 'var(--ink)' }} />
+      }
+    >
       <PlatformAuthClient supabaseConfigured={Boolean(supabase)} />
     </Suspense>
   )
