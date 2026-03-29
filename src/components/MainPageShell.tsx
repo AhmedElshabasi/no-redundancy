@@ -108,7 +108,7 @@ export function MainPageShell({
               className={`nav-item${activePage === 'file-share' ? ' active' : ''}`}
               onClick={() => setActivePage('file-share')}
             >
-            
+             <span>↗</span> File Share
             </button>
             <button
               type="button"
