@@ -121,62 +121,73 @@ export function ActivityLogPanel() {
           </div>
         </section>
 
-        <aside className="al-side-stack">
+        <aside className="rt-side-stack">
           <section className="card">
             <div className="card-header">
-              <div className="card-title">⚠ Flagged Activity</div>
+              <div className="card-title">⚠ Needs attention</div>
             </div>
             <div className="card-body">
-              <div className="al-mini-list">
-                <div className="al-mini-item">
+              <div className="rt-mini-list">
+                <div className="rt-mini-item">
                   <div>
-                    <div className="al-mini-title">Expired link access</div>
-                    <div className="al-mini-sub">Midterm_Presentation_v3.pptx was requested after expiry.</div>
+                    <div className="rt-mini-title">Meeting_Notes_TA.docx</div>
+                    <div className="rt-mini-sub">
+                      Recipient has not opened the link and it dies in 2 hours.
+                    </div>
                   </div>
-                  <span className="al-mini-tag danger">Critical</span>
+                  <div className="rt-metric">
+                    <div className="rt-metric-value">2h</div>
+                    <div className="rt-mini-sub">left</div>
+                  </div>
                 </div>
-                <div className="al-mini-item">
+                <div className="rt-mini-item">
                   <div>
-                    <div className="al-mini-title">Not opened before expiry</div>
-                    <div className="al-mini-sub">Meeting_Notes_TA.docx still has no recipient activity.</div>
+                    <div className="rt-mini-title">Midterm_Presentation_v3.pptx</div>
+                    <div className="rt-mini-sub">Expired. If they still need it, resend now.</div>
                   </div>
-                  <span className="al-mini-tag warn">Review</span>
-                </div>
-                <div className="al-mini-item">
-                  <div>
-                    <div className="al-mini-title">Multiple opens</div>
-                    <div className="al-mini-sub">Capstone_Final_Report.pdf has been opened 3 times today.</div>
+                  <div className="rt-metric">
+                    <div className="rt-metric-value">0</div>
+                    <div className="rt-mini-sub">active links</div>
                   </div>
-                  <span className="al-mini-tag info">Track</span>
                 </div>
               </div>
             </div>
           </section>
           <section className="card">
             <div className="card-header">
-              <div className="card-title">📌 Event Breakdown</div>
+              <div className="card-title">📊 Quick breakdown</div>
             </div>
             <div className="card-body">
-              <div className="al-breakdown">
-                <div className="al-break-row">
-                  <span>Uploads</span>
-                  <strong>28</strong>
+              <div className="rt-mini-list">
+                <div className="rt-mini-item">
+                  <div>
+                    <div className="rt-mini-title">Opened links</div>
+                    <div className="rt-mini-sub">Transfers that were clicked at least once.</div>
+                  </div>
+                  <div className="rt-metric">
+                    <div className="rt-metric-value">14</div>
+                    <div className="rt-mini-sub">of 18</div>
+                  </div>
                 </div>
-                <div className="al-break-row">
-                  <span>Shares</span>
-                  <strong>24</strong>
+                <div className="rt-mini-item">
+                  <div>
+                    <div className="rt-mini-title">Largest transfer</div>
+                    <div className="rt-mini-sub">UI_Assets_Review.zip moved the most data this week.</div>
+                  </div>
+                  <div className="rt-metric">
+                    <div className="rt-metric-value">812</div>
+                    <div className="rt-mini-sub">MB</div>
+                  </div>
                 </div>
-                <div className="al-break-row">
-                  <span>Opens</span>
-                  <strong>67</strong>
-                </div>
-                <div className="al-break-row">
-                  <span>Expiries</span>
-                  <strong>19</strong>
-                </div>
-                <div className="al-break-row">
-                  <span>Blocked</span>
-                  <strong>8</strong>
+                <div className="rt-mini-item">
+                  <div>
+                    <div className="rt-mini-title">Average time to open</div>
+                    <div className="rt-mini-sub">How fast recipients actually respond after receiving a link.</div>
+                  </div>
+                  <div className="rt-metric">
+                    <div className="rt-metric-value">38m</div>
+                    <div className="rt-mini-sub">avg</div>
+                  </div>
                 </div>
               </div>
             </div>
