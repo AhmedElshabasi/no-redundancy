@@ -18,42 +18,12 @@ export function RecentTransfersPanel() {
         </div>
       </section>
 
-      <section className="rt-stats">
-        <div className="rt-stat red">
-          <div className="rt-stat-label">Transfers today</div>
-          <div className="rt-stat-value">24</div>
-          <div className="rt-stat-sub">6 more than yesterday</div>
-        </div>
-        <div className="rt-stat gold">
-          <div className="rt-stat-label">Pending expiry</div>
-          <div className="rt-stat-value">5</div>
-          <div className="rt-stat-sub">Need attention in the next 12h</div>
-        </div>
-        <div className="rt-stat blue">
-          <div className="rt-stat-label">Open rate</div>
-          <div className="rt-stat-value">78%</div>
-          <div className="rt-stat-sub">Recipients are actually using the links</div>
-        </div>
-        <div className="rt-stat green">
-          <div className="rt-stat-label">Data moved</div>
-          <div className="rt-stat-value">18.4 GB</div>
-          <div className="rt-stat-sub">Across the last 7 days</div>
-        </div>
-      </section>
-
       <div className="rt-layout">
         <section className="card">
           <div className="card-header">
             <div className="card-title">↗ Transfer history</div>
             <div className="rt-toolbar">
               <input className="rt-search" type="text" placeholder="Search file, recipient, or note" readOnly />
-              <select className="rt-filter" defaultValue="all">
-                <option value="all">All statuses</option>
-                <option value="opened">Opened</option>
-                <option value="sent">Sent</option>
-                <option value="expiring">Expiring</option>
-                <option value="expired">Expired</option>
-              </select>
               <select className="rt-sort" defaultValue="newest">
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -235,78 +205,7 @@ export function RecentTransfersPanel() {
           </div>
         </section>
 
-        <aside className="rt-side-stack">
-          <section className="card">
-            <div className="card-header">
-              <div className="card-title">⚠ Needs attention</div>
-            </div>
-            <div className="card-body">
-              <div className="rt-mini-list">
-                <div className="rt-mini-item">
-                  <div>
-                    <div className="rt-mini-title">Meeting_Notes_TA.docx</div>
-                    <div className="rt-mini-sub">
-                      Recipient has not opened the link and it dies in 2 hours.
-                    </div>
-                  </div>
-                  <div className="rt-metric">
-                    <div className="rt-metric-value">2h</div>
-                    <div className="rt-mini-sub">left</div>
-                  </div>
-                </div>
-                <div className="rt-mini-item">
-                  <div>
-                    <div className="rt-mini-title">Midterm_Presentation_v3.pptx</div>
-                    <div className="rt-mini-sub">Expired. If they still need it, resend now.</div>
-                  </div>
-                  <div className="rt-metric">
-                    <div className="rt-metric-value">0</div>
-                    <div className="rt-mini-sub">active links</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-          <section className="card">
-            <div className="card-header">
-              <div className="card-title">📊 Quick breakdown</div>
-            </div>
-            <div className="card-body">
-              <div className="rt-mini-list">
-                <div className="rt-mini-item">
-                  <div>
-                    <div className="rt-mini-title">Opened links</div>
-                    <div className="rt-mini-sub">Transfers that were clicked at least once.</div>
-                  </div>
-                  <div className="rt-metric">
-                    <div className="rt-metric-value">14</div>
-                    <div className="rt-mini-sub">of 18</div>
-                  </div>
-                </div>
-                <div className="rt-mini-item">
-                  <div>
-                    <div className="rt-mini-title">Largest transfer</div>
-                    <div className="rt-mini-sub">UI_Assets_Review.zip moved the most data this week.</div>
-                  </div>
-                  <div className="rt-metric">
-                    <div className="rt-metric-value">812</div>
-                    <div className="rt-mini-sub">MB</div>
-                  </div>
-                </div>
-                <div className="rt-mini-item">
-                  <div>
-                    <div className="rt-mini-title">Average time to open</div>
-                    <div className="rt-mini-sub">How fast recipients actually respond after receiving a link.</div>
-                  </div>
-                  <div className="rt-metric">
-                    <div className="rt-metric-value">38m</div>
-                    <div className="rt-mini-sub">avg</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </aside>
+
       </div>
     </div>
   )
