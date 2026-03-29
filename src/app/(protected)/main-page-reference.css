@@ -783,11 +783,12 @@
   border-radius: 12px;
 }
 
+/* Fixed palette so toasts stay dark-on-light text in both themes (not var(--ink)). */
 #main-page-root .toast {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  background: var(--ink);
+  background: #1c1c1e;
   color: #fff;
   padding: 12px 16px;
   border-radius: 10px;
