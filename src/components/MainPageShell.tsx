@@ -108,7 +108,7 @@ export function MainPageShell({
               className={`nav-item${activePage === 'file-share' ? ' active' : ''}`}
               onClick={() => setActivePage('file-share')}
             >
-              <span>↗</span> File Share<span className="nav-badge">Live</span>
+            
             </button>
             <button
               type="button"
@@ -162,7 +162,7 @@ export function MainPageShell({
               >
                 {dark ? '☀️ Light mode' : '🌙 Dark mode'}
               </button>
-              <div className="ai-badge">✦ Transfer workspace</div>
+              
             </div>
           </div>
 

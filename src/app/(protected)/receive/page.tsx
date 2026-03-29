@@ -1,4 +1,3 @@
-import { headers } from 'next/headers'
 import { supabaseServerClient } from '@/lib/supabaseServer'
 import { FileShareDashboard, type UploadPackageRow } from '@/components/FileShareDashboard'
 
@@ -48,17 +47,11 @@ export default async function ReceivePage() {
     }
   }
 
-  const h = await headers()
-  const proto = h.get('x-forwarded-proto') ?? 'http'
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
-  const publicBaseUrl = `${proto}://${host}`
-
   return (
     <FileShareDashboard
       initialUploads={list}
       serverUploadCount={list.length}
       serverTotalBytes={serverTotalBytes}
-      publicBaseUrl={publicBaseUrl}
     />
   )
 }

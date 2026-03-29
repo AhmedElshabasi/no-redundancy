@@ -624,6 +624,21 @@
   color: var(--red);
 }
 
+#main-page-root .share-file-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#main-page-root a.mini-btn.download-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 #main-page-root .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
