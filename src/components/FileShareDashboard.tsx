@@ -22,7 +22,7 @@ export type UploadPackageRow = {
 
 function ext(name: string) {
   const parts = name.split('.')
-  return parts.length > 1 ? parts.pop()!.slice(0, 5).toUpperCase() : 'FILE'
+  return parts.length > 1 ? parts.pop()!.slice(0, 4).toUpperCase() : 'FILE'
 }
 
 function fmtSize(b: number) {
@@ -46,24 +46,43 @@ function formatShortDate(iso: string | null) {
   })
 }
 
+const ALLOWED_EXT = new Set(['pdf', 'docx'])
+const ALLOWED_MIME = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+])
+
+function extensionLower(name: string) {
+  const i = name.lastIndexOf('.')
+  return i >= 0 ? name.slice(i + 1).toLowerCase() : ''
+}
+
+function isAllowedFile(file: File) {
+  if (ALLOWED_EXT.has(extensionLower(file.name))) return true
+  if (file.type && ALLOWED_MIME.has(file.type)) return true
+  return false
+}
+
+function publicFileUrl(storagePath: string) {
+  if (!supabaseBrowser) return null
+  const { data } = supabaseBrowser.storage.from('uploads').getPublicUrl(storagePath)
+  return data.publicUrl ?? null
+}
+
 export function FileShareDashboard({
   initialUploads,
   serverUploadCount,
   serverTotalBytes,
-  publicBaseUrl,
 }: {
   initialUploads: UploadPackageRow[]
   serverUploadCount: number
   serverTotalBytes: number
-  publicBaseUrl: string
 }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const [queue, setQueue] = useState<File[]>([])
   const [note, setNote] = useState('')
-  const [expiryHours, setExpiryHours] = useState(24)
-  const [maxDownloads, setMaxDownloads] = useState(5)
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,9 +98,26 @@ export function FileShareDashboard({
   }, [])
 
   const addFiles = (newFiles: File[]) => {
+    const allowed: File[] = []
+    let skipped = 0
+    for (const f of newFiles) {
+      if (!isAllowedFile(f)) {
+        skipped += 1
+        continue
+      }
+      allowed.push(f)
+    }
+    if (skipped > 0) {
+      showToast(`Only PDF and DOCX allowed. ${skipped} file${skipped === 1 ? '' : 's'} skipped.`)
+    }
+    if (!allowed.length) {
+      setShowResult(false)
+      setError(null)
+      return
+    }
     setQueue((prev) => {
       const next = [...prev]
-      for (const f of newFiles) {
+      for (const f of allowed) {
         if (!next.find((x) => x.name === f.name && x.size === f.size)) next.push(f)
       }
       return next
@@ -150,12 +186,12 @@ export function FileShareDashboard({
       }
 
       const n = queue.length
-      const meta = `${n} file${n === 1 ? '' : 's'} • expires in ${expiryHours}h • max ${maxDownloads} download${maxDownloads === 1 ? '' : 's'}${note.trim() ? ` • ${note.trim()}` : ''}`
+      const meta = `${n} file${n === 1 ? '' : 's'} • ${fmtSize(queueBytes)}${note.trim() ? ' • note added' : ''}`
       setLastBatchMeta(meta)
       setQueue([])
       setNote('')
       setShowResult(true)
-      showToast('Share link generated.')
+      showToast('Upload complete.')
       router.refresh()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Upload failed.')
@@ -164,45 +200,57 @@ export function FileShareDashboard({
     }
   }
 
-  const copyWorkspaceLink = () => {
-    const text = `${publicBaseUrl}/receive`
-    void navigator.clipboard.writeText(text).then(() => {
-      showToast('Link copied.')
-    })
-  }
+  const shareListBody =
+    initialUploads.length === 0 ? (
+      <div className="empty-state">No files yet. Upload a PDF or DOCX and it will show up here.</div>
+    ) : (
+      initialUploads.map((u) => {
+        const files = u.upload_files || []
+        const total = files.reduce((s, f) => s + (typeof f.size === 'number' ? f.size : 0), 0)
 
-  const renderShareList = () => {
-    if (!initialUploads.length) {
-      return (
-        <div className="empty-state">No share links yet. Generate one and it will show up here.</div>
-      )
-    }
-
-    return initialUploads.flatMap((u) => {
-      const files = u.upload_files || []
-      return files.map((f) => {
-        const url = supabaseBrowser?.storage.from('uploads').getPublicUrl(f.storage_path).data.publicUrl ?? '#'
-        const size = typeof f.size === 'number' ? f.size : 0
         return (
-          <div key={f.id} className="share-item">
-            <div className="file-ext">{ext(f.original_name)}</div>
-            <div className="share-meta">
-              <div className="share-name">{f.original_name}</div>
-              <div className="share-detail">
-                {fmtSize(size)} · {u.uploader_email || 'unknown'} · {formatShortDate(u.created_at)}
-                {u.note ? ` · ${u.note}` : ''}
+          <div key={u.id} className="share-item">
+            <div className="share-head">
+              <div>
+                <div className="share-title">
+                  {files.length} file{files.length === 1 ? '' : 's'} • {fmtSize(total)}
+                </div>
+                <div className="share-sub">
+                  {u.uploader_email ?? 'Unknown'} • {formatShortDate(u.created_at)}
+                  {u.note ? ` • ${u.note}` : ''}
+                </div>
               </div>
             </div>
-            <a className="download-btn" href={url} download={f.original_name}>
-              Download
-            </a>
+            <div className="share-file-rows">
+              {files.map((f) => {
+                const url = publicFileUrl(f.storage_path)
+                const size = typeof f.size === 'number' ? f.size : 0
+                return (
+                  <div key={f.id} className="file-row share-file-row">
+                    <div className="file-row-left">
+                      <div className="file-badge">{ext(f.original_name)}</div>
+                      <div>
+                        <div className="file-name">{f.original_name}</div>
+                        <div className="file-meta">{fmtSize(size)}</div>
+                      </div>
+                    </div>
+                    {url ? (
+                      <a className="mini-btn download-link" href={url} download={f.original_name}>
+                        Download
+                      </a>
+                    ) : (
+                      <span className="share-sub" style={{ flexShrink: 0 }}>
+                        Unavailable
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )
       })
-    })
-  }
-
-  const workspaceLink = `${publicBaseUrl}/receive`
+    )
 
   return (
     <>
@@ -214,12 +262,9 @@ export function FileShareDashboard({
               <br />
               without the clutter.
             </h1>
-            <p>
-              This version matches the Sign_In_Page styling and removes the old 6-character share code flow. It now
-              generates direct share links only.
-            </p>
+            <p>Upload PDF and DOCX files only. Keep transfers simple without link expiry or download limits.</p>
           </div>
-          <div className="hero-meta">UCalgary-inspired visual theme</div>
+          <div className="hero-meta">Secure file sharing workspace</div>
         </div>
       </section>
 
@@ -227,17 +272,17 @@ export function FileShareDashboard({
         <div className="stat-card red">
           <div className="stat-label">Files queued</div>
           <div className="stat-value">{queue.length}</div>
-          <div className="stat-sub">Ready to share</div>
+          <div className="stat-sub">Ready to send</div>
         </div>
         <div className="stat-card gold">
-          <div className="stat-label">Shared this session</div>
+          <div className="stat-label">Transfers created</div>
           <div className="stat-value">{serverUploadCount}</div>
-          <div className="stat-sub">Links generated</div>
+          <div className="stat-sub">Upload batches</div>
         </div>
         <div className="stat-card blue">
-          <div className="stat-label">Total data</div>
+          <div className="stat-label">Total size moved</div>
           <div className="stat-value">{fmtSize(serverTotalBytes + queueBytes)}</div>
-          <div className="stat-sub">Across generated shares</div>
+          <div className="stat-sub">Across all shares</div>
         </div>
       </div>
 
@@ -250,13 +295,16 @@ export function FileShareDashboard({
       <div className="layout">
         <section className="card">
           <div className="card-header">
-            <div className="card-title">📤 Upload files</div>
+            <div className="card-title">📤 Create share</div>
           </div>
           <div className="card-body">
             <div
               className={`drop-zone${dragOver ? ' dragover' : ''}`}
               id="drop-zone"
-              onClick={() => inputRef.current?.click()}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return
+                inputRef.current?.click()
+              }}
               onDragOver={(e) => {
                 e.preventDefault()
                 setDragOver(true)
@@ -269,65 +317,57 @@ export function FileShareDashboard({
               }}
               role="presentation"
             >
-              <div className="drop-icon">↑</div>
-              <h2>Drop files here</h2>
-              <p>Or click to browse. Duplicate files are ignored automatically.</p>
+              <div className="drop-icon">↥</div>
+              <div className="drop-title">Drag files here</div>
+              <div className="drop-sub">PDF and DOCX only — or choose files manually</div>
+              <input
+                id="file-input"
+                ref={inputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                hidden
+                onChange={(e) => {
+                  const files = [...(e.target.files || [])]
+                  if (files.length) addFiles(files)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  inputRef.current?.click()
+                }}
+              >
+                Browse files
+              </button>
             </div>
-            <input
-              id="file-input"
-              ref={inputRef}
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = [...(e.target.files || [])]
-                if (files.length) addFiles(files)
-                e.target.value = ''
-              }}
-            />
 
             <div className="file-queue" id="file-queue">
-              {!queue.length ? (
-                <div className="empty-state">No files queued yet.</div>
-              ) : (
-                queue.map((file, index) => (
-                  <div key={`${file.name}-${file.size}-${index}`} className="file-item">
-                    <div className="file-ext">{ext(file.name)}</div>
-                    <div className="file-meta">
+              {queue.map((file, index) => (
+                <div key={`${file.name}-${file.size}-${index}`} className="file-row">
+                  <div className="file-row-left">
+                    <div className="file-badge">{ext(file.name)}</div>
+                    <div>
                       <div className="file-name">{file.name}</div>
-                      <div className="file-size">{fmtSize(file.size)}</div>
+                      <div className="file-meta">{fmtSize(file.size)}</div>
                     </div>
-                    <button type="button" className="remove-btn" onClick={() => removeAt(index)}>
-                      Remove
-                    </button>
                   </div>
-                ))
-              )}
+                  <button
+                    type="button"
+                    className="file-remove"
+                    onClick={() => removeAt(index)}
+                    aria-label="Remove file"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div className="form-grid" id="share-settings" style={{ display: hasFiles ? undefined : 'none' }}>
-              <div className="form-field">
-                <label htmlFor="expiry">Expires after</label>
-                <select
-                  id="expiry"
-                  value={expiryHours}
-                  onChange={(e) => setExpiryHours(Number(e.target.value))}
-                >
-                  <option value={1}>1 hour</option>
-                  <option value={6}>6 hours</option>
-                  <option value={24}>24 hours</option>
-                  <option value={72}>72 hours</option>
-                </select>
-              </div>
-              <div className="form-field">
-                <label htmlFor="max-dl">Max downloads</label>
-                <input
-                  id="max-dl"
-                  type="number"
-                  min={1}
-                  value={maxDownloads}
-                  onChange={(e) => setMaxDownloads(Number(e.target.value) || 1)}
-                />
-              </div>
               <div className="form-field full">
                 <label htmlFor="note">Share note</label>
                 <textarea
@@ -347,21 +387,13 @@ export function FileShareDashboard({
               onClick={() => void generateShare()}
               disabled={busy}
             >
-              {busy ? 'Uploading…' : 'Generate share link'}
+              {busy ? 'Uploading…' : 'Upload files'}
             </button>
 
             <div className="result-box" id="share-result" style={{ display: showResult ? 'block' : 'none' }}>
-              <div className="result-head">Share link ready</div>
-              <div className="link-row">
-                <div className="share-link" id="share-link-display">
-                  {workspaceLink}
-                </div>
-                <button type="button" className="secondary-btn" id="copy-btn" onClick={copyWorkspaceLink}>
-                  Copy link
-                </button>
-              </div>
+              <div className="result-head">Upload complete</div>
               <div className="helper" id="share-meta-text">
-                {lastBatchMeta || 'Open this workspace link while signed in to browse all uploads.'}
+                {lastBatchMeta || 'Your files are listed in Shared files.'}
               </div>
             </div>
           </div>
@@ -372,7 +404,9 @@ export function FileShareDashboard({
             <div className="card-title">📥 Shared files</div>
           </div>
           <div className="card-body">
-            <div id="share-list">{renderShareList()}</div>
+            <div className="share-list" id="share-list">
+              {shareListBody}
+            </div>
           </div>
         </section>
       </div>
