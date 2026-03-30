@@ -89,6 +89,7 @@ export function FileShareDashboard({
   const [showResult, setShowResult] = useState(false)
   const [lastBatchMeta, setLastBatchMeta] = useState('')
   const [toast, setToast] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const queueBytes = useMemo(() => queue.reduce((a, f) => a + f.size, 0), [queue])
 
@@ -200,6 +201,51 @@ export function FileShareDashboard({
     }
   }
 
+  const deleteSharedFile = async (
+    uploadId: string,
+    fileId: string,
+    storagePath: string,
+    originalName: string,
+  ) => {
+    if (!supabaseBrowser) {
+      showToast('Supabase is not configured.')
+      return
+    }
+    if (
+      !window.confirm(
+        `Delete “${originalName}”? This removes the file from storage and cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setDeletingId(fileId)
+    try {
+      const { error: storageErr } = await supabaseBrowser.storage.from('uploads').remove([storagePath])
+      if (storageErr) {
+        console.warn('[uploads] storage remove:', storageErr.message)
+      }
+      const { error: fileErr } = await supabaseBrowser.from('upload_files').delete().eq('id', fileId)
+      if (fileErr) throw fileErr
+
+      const { data: remaining } = await supabaseBrowser
+        .from('upload_files')
+        .select('id')
+        .eq('upload_id', uploadId)
+        .limit(1)
+      if (!remaining?.length) {
+        const { error: uploadErr } = await supabaseBrowser.from('uploads').delete().eq('id', uploadId)
+        if (uploadErr) console.warn('[uploads] delete package:', uploadErr.message)
+      }
+
+      showToast('File deleted.')
+      router.refresh()
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Delete failed.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const shareListBody =
     initialUploads.length === 0 ? (
       <div className="empty-state">No files yet. Upload a PDF or DOCX and it will show up here.</div>
@@ -234,15 +280,26 @@ export function FileShareDashboard({
                         <div className="file-meta">{fmtSize(size)}</div>
                       </div>
                     </div>
-                    {url ? (
-                      <a className="mini-btn download-link" href={url} download={f.original_name}>
-                        Download
-                      </a>
-                    ) : (
-                      <span className="share-sub" style={{ flexShrink: 0 }}>
-                        Unavailable
-                      </span>
-                    )}
+                    <div className="share-file-actions">
+                      {url ? (
+                        <a className="mini-btn download-link" href={url} download={f.original_name}>
+                          Download
+                        </a>
+                      ) : (
+                        <span className="share-sub" style={{ flexShrink: 0 }}>
+                          Unavailable
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="file-remove share-file-delete"
+                        disabled={deletingId === f.id}
+                        aria-label={`Delete ${f.original_name}`}
+                        onClick={() => void deleteSharedFile(u.id, f.id, f.storage_path, f.original_name)}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 )
               })}

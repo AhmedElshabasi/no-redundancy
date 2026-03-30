@@ -639,6 +639,22 @@
   flex-shrink: 0;
 }
 
+#main-page-root .share-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#main-page-root .share-file-delete {
+  line-height: 1;
+}
+
+#main-page-root .share-file-delete:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
 #main-page-root .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
