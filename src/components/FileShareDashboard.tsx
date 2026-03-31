@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import type { UploadFileRow, UploadPackageRow } from '@/types/uploadWorkspace'
+import type { UploadFileRow, UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
-export type { UploadFileRow, UploadPackageRow } from '@/types/uploadWorkspace'
+export type { UploadFileRow, UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
 type DeleteConfirmTarget = {
   uploadId: string
@@ -134,6 +134,11 @@ export function FileShareDashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'upload_files' },
+        scheduleRefresh,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'upload_notes' },
         scheduleRefresh,
       )
       .subscribe()

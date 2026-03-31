@@ -33,6 +33,12 @@ export default async function ProtectedLayout({
           mime,
           size,
           storage_path
+        ),
+        upload_notes(
+          id,
+          author_email,
+          body,
+          created_at
         )
       `,
     )
