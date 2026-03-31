@@ -53,12 +53,6 @@ function displayNameFromEmail(email: string | null): string {
   return local || email
 }
 
-function publicFileUrl(storagePath: string) {
-  if (!supabaseBrowser) return null
-  const { data } = supabaseBrowser.storage.from('uploads').getPublicUrl(storagePath)
-  return data.publicUrl ?? null
-}
-
 function packageSummary(u: UploadPackageRow) {
   const files = u.upload_files || []
   const total = files.reduce((s, f) => s + (typeof f.size === 'number' ? f.size : 0), 0)
@@ -96,12 +90,12 @@ export function RecentTransfersPanel() {
     }
   }, [addNoteFor])
 
-  const copyFirstLink = useCallback((u: UploadPackageRow) => {
+  const copyFirstLink = useCallback(async (u: UploadPackageRow) => {
     const path = u.upload_files?.[0]?.storage_path
-    if (!path) return
-    const url = publicFileUrl(path)
-    if (!url || !navigator.clipboard) return
-    void navigator.clipboard.writeText(url)
+    if (!path || !supabaseBrowser) return
+    const { data, error } = await supabaseBrowser.storage.from('uploads').createSignedUrl(path, 3600)
+    if (error || !data?.signedUrl || !navigator.clipboard) return
+    void navigator.clipboard.writeText(data.signedUrl)
   }, [])
 
   const submitNewNote = useCallback(async () => {
@@ -154,7 +148,7 @@ export function RecentTransfersPanel() {
             </h2>
             <p className="confirm-dialog-body" style={{ marginBottom: 12 }}>
               Leave a message for <strong>{displayNameFromEmail(addNoteFor.uploader_email)}</strong> about this
-              upload. Anyone signed in can add a note.
+              upload. Other members of this team can see notes.
             </p>
 
             <div style={{ marginBottom: 14 }}>
@@ -283,9 +277,7 @@ export function RecentTransfersPanel() {
                     const { primary, meta, badge } = packageSummary(u)
                     const email = u.uploader_email
                     const name = displayNameFromEmail(email)
-                    const firstUrl = u.upload_files?.[0]?.storage_path
-                      ? publicFileUrl(u.upload_files[0].storage_path)
-                      : null
+                    const firstPath = u.upload_files?.[0]?.storage_path ?? null
                     const uploadNote = u.note?.trim()
 
                     return (
@@ -321,8 +313,8 @@ export function RecentTransfersPanel() {
                             <button type="button" className="rt-btn" onClick={() => setAddNoteFor(u)}>
                               Add note
                             </button>
-                            {firstUrl ? (
-                              <button type="button" className="rt-btn" onClick={() => copyFirstLink(u)}>
+                            {firstPath ? (
+                              <button type="button" className="rt-btn" onClick={() => void copyFirstLink(u)}>
                                 Copy link
                               </button>
                             ) : null}

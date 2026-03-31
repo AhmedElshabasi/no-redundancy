@@ -20,6 +20,7 @@ export type UploadPackageRow = {
   /** Set when creating the upload in File Share. */
   note: string | null
   created_at: string | null
+  team_id?: string | null
   upload_files: UploadFileRow[] | null
   upload_notes?: UploadNoteRow[] | null
 }

@@ -116,6 +116,124 @@
   margin-bottom: 6px;
 }
 
+#main-page-root .team-switcher {
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#main-page-root .team-switcher-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,.35);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+#main-page-root .team-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.9);
+  font-size: 13px;
+  font-family: var(--sans);
+}
+
+#main-page-root .team-invite-block {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+#main-page-root .team-invite-label {
+  font-size: 10px;
+  color: rgba(255,255,255,.4);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 4px;
+}
+
+#main-page-root .team-invite-code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #fff;
+  word-break: break-all;
+}
+
+#main-page-root .team-invite-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+#main-page-root .team-empty-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  line-height: 1.4;
+}
+
+#main-page-root .team-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#main-page-root .team-action-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+#main-page-root .team-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.9);
+  font-size: 12px;
+  font-family: var(--sans);
+}
+
+#main-page-root .team-input::placeholder {
+  color: rgba(255,255,255,.35);
+}
+
+#main-page-root .team-action-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: none;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#main-page-root .team-action-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.2);
+}
+
+#main-page-root .team-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#main-page-root .team-error {
+  font-size: 11px;
+  color: #ff8a8a;
+  line-height: 1.35;
+}
+
 #main-page-root .nav-item {
   display: flex;
   align-items: center;
