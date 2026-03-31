@@ -2,23 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import type { UploadFileRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
-export type UploadFileRow = {
-  id: string
-  original_name: string
-  mime: string | null
-  size: number | null
-  storage_path: string
-}
-
-export type UploadPackageRow = {
-  id: string
-  uploader_email: string | null
-  note: string | null
-  created_at: string | null
-  upload_files: UploadFileRow[] | null
-}
+export type { UploadFileRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
 type DeleteConfirmTarget = {
   uploadId: string
@@ -76,15 +64,8 @@ function publicFileUrl(storagePath: string) {
   return data.publicUrl ?? null
 }
 
-export function FileShareDashboard({
-  initialUploads,
-  serverUploadCount,
-  serverTotalBytes,
-}: {
-  initialUploads: UploadPackageRow[]
-  serverUploadCount: number
-  serverTotalBytes: number
-}) {
+export function FileShareDashboard() {
+  const { initialUploads, serverUploadCount, serverTotalBytes, loadError } = useUploadsWorkspace()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -455,6 +436,11 @@ export function FileShareDashboard({
         </div>
       </div>
 
+      {loadError ? (
+        <div className="empty-state" style={{ marginBottom: 16, borderColor: 'var(--red)', color: 'var(--ink)' }}>
+          {loadError}
+        </div>
+      ) : null}
       {error ? (
         <div className="empty-state" style={{ marginBottom: 16, borderColor: 'var(--red)', color: 'var(--ink)' }}>
           {error}

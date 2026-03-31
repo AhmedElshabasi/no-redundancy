@@ -1,5 +1,6 @@
 -- File share packages + per-file metadata. Run in Supabase → SQL Editor after 001_profiles.sql (optional).
--- Matches src/app/(protected)/receive/page.tsx and src/components/FileShareDashboard.tsx.
+-- Loaded in src/app/(protected)/layout.tsx for the workspace (file share + recent uploads list).
+-- Matches src/components/FileShareDashboard.tsx and src/components/RecentTransfersPanel.tsx.
 
 -- ---------------------------------------------------------------------------
 -- Tables
