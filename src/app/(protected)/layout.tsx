@@ -23,16 +23,18 @@ export default async function ProtectedLayout({
 
   const { data: membershipRows } = await supabase
     .from('team_members')
-    .select('teams(id, name, invite_code)')
+    .select('role, teams(id, name, invite_code)')
     .eq('user_id', user.id)
 
   const teams: TeamRow[] = (membershipRows ?? [])
     .map((row) => {
       const t = row.teams as TeamRow | TeamRow[] | null | undefined
-      if (Array.isArray(t)) return t[0] ?? null
-      return t ?? null
+      const team = Array.isArray(t) ? t[0] : t
+      if (!team?.id) return null
+      const role = row.role === 'owner' || row.role === 'member' ? row.role : undefined
+      return { ...team, role } as TeamRow
     })
-    .filter((t): t is TeamRow => Boolean(t?.id))
+    .filter((t): t is TeamRow => t != null)
 
   const cookieStore = await cookies()
   const cookieTeam = cookieStore.get('nr-team-id')?.value

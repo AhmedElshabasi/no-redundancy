@@ -458,6 +458,128 @@
   letter-spacing: .08em;
 }
 
+#main-page-root .fs-team-insights {
+  margin-bottom: 24px;
+}
+
+#main-page-root .fs-team-insights-lead {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink2);
+  margin-bottom: 16px;
+}
+
+#main-page-root .fs-team-insights-lead strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+#main-page-root .fs-team-insights-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+#main-page-root .fs-team-insights-row {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+#main-page-root .fs-team-insights-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+#main-page-root .fs-team-insights-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#main-page-root .fs-team-insights-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+#main-page-root .fs-team-insights-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#main-page-root .fs-team-insights-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--surface2);
+}
+
+#main-page-root .fs-team-insights-badge--active {
+  border-color: rgba(207, 7, 34, 0.35);
+  color: var(--red);
+  background: rgba(207, 7, 34, 0.06);
+}
+
+#main-page-root .fs-team-insights-badge--owner {
+  border-color: rgba(240, 178, 31, 0.45);
+  color: var(--gold-dark);
+  background: rgba(240, 178, 31, 0.1);
+}
+
+#main-page-root .fs-team-insights-badge--member {
+  color: var(--ink2);
+}
+
+#main-page-root .fs-team-insights-code-block {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+#main-page-root .fs-team-insights-code-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+#main-page-root .fs-team-insights-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+#main-page-root .fs-team-insights-code {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+#main-page-root .fs-team-insights-copy {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
 #main-page-root .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
