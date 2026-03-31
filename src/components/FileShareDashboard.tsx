@@ -58,14 +58,8 @@ function isAllowedFile(file: File) {
   return false
 }
 
-function publicFileUrl(storagePath: string) {
-  if (!supabaseBrowser) return null
-  const { data } = supabaseBrowser.storage.from('uploads').getPublicUrl(storagePath)
-  return data.publicUrl ?? null
-}
-
 export function FileShareDashboard() {
-  const { initialUploads, serverUploadCount, serverTotalBytes, loadError } = useUploadsWorkspace()
+  const { initialUploads, serverUploadCount, serverTotalBytes, loadError, activeTeamId } = useUploadsWorkspace()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -86,6 +80,29 @@ export function FileShareDashboard() {
     setToast(message)
     window.setTimeout(() => setToast(null), 2200)
   }, [])
+
+  const downloadFile = useCallback(
+    async (storagePath: string, filename: string) => {
+      if (!supabaseBrowser) {
+        showToast('Supabase is not configured.')
+        return
+      }
+      const { data, error } = await supabaseBrowser.storage.from('uploads').createSignedUrl(storagePath, 3600)
+      if (error || !data?.signedUrl) {
+        showToast('Could not download file.')
+        return
+      }
+      const a = document.createElement('a')
+      a.href = data.signedUrl
+      a.download = filename
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    },
+    [showToast],
+  )
 
   useEffect(() => {
     if (!deleteConfirm) return
@@ -150,6 +167,10 @@ export function FileShareDashboard() {
   }, [router])
 
   const addFiles = (newFiles: File[]) => {
+    if (!activeTeamId) {
+      showToast('Create or join a team in the sidebar first.')
+      return
+    }
     const allowed: File[] = []
     let skipped = 0
     for (const f of newFiles) {
@@ -199,11 +220,13 @@ export function FileShareDashboard() {
       } = await supabaseBrowser.auth.getUser()
       if (userErr) throw userErr
       if (!user) throw new Error('Not signed in.')
+      if (!activeTeamId) throw new Error('Select or create a team in the sidebar first.')
 
       const { data: uploadRow, error: uploadErr } = await supabaseBrowser
         .from('uploads')
         .insert({
           user_id: user.id,
+          team_id: activeTeamId,
           uploader_email: user.email ?? null,
           note: note.trim() || null,
         })
@@ -215,7 +238,7 @@ export function FileShareDashboard() {
 
       for (const f of queue) {
         const fileId = crypto.randomUUID()
-        const storagePath = `demo/${user.id}/${uploadId}/${fileId}__${sanitizeFilename(f.name)}`
+        const storagePath = `teams/${activeTeamId}/${user.id}/${uploadId}/${fileId}__${sanitizeFilename(f.name)}`
 
         const { error: storageUploadErr } = await supabaseBrowser.storage
           .from('uploads')
@@ -323,7 +346,6 @@ export function FileShareDashboard() {
             </div>
             <div className="share-file-rows">
               {files.map((f) => {
-                const url = publicFileUrl(f.storage_path)
                 const size = typeof f.size === 'number' ? f.size : 0
                 return (
                   <div key={f.id} className="file-row share-file-row">
@@ -335,10 +357,14 @@ export function FileShareDashboard() {
                       </div>
                     </div>
                     <div className="share-file-actions">
-                      {url ? (
-                        <a className="mini-btn download-link" href={url} download={f.original_name}>
+                      {supabaseBrowser ? (
+                        <button
+                          type="button"
+                          className="mini-btn download-link"
+                          onClick={() => void downloadFile(f.storage_path, f.original_name)}
+                        >
                           Download
-                        </a>
+                        </button>
                       ) : (
                         <span className="share-sub" style={{ flexShrink: 0 }}>
                           Unavailable
@@ -417,7 +443,9 @@ export function FileShareDashboard() {
               <br />
               without the clutter.
             </h1>
-            <p>Upload PDF and DOCX files only. Keep transfers simple without link expiry or download limits.</p>
+            <p>
+              Upload PDF and DOCX files only. Files are visible only to members of the team you select in the sidebar.
+            </p>
           </div>
           <div className="hero-meta">Secure file sharing workspace</div>
         </div>
@@ -446,6 +474,11 @@ export function FileShareDashboard() {
           {loadError}
         </div>
       ) : null}
+      {!activeTeamId ? (
+        <div className="empty-state" style={{ marginBottom: 16 }}>
+          Create a team or join with an invite code in the sidebar to upload and see shared files for that group.
+        </div>
+      ) : null}
       {error ? (
         <div className="empty-state" style={{ marginBottom: 16, borderColor: 'var(--red)', color: 'var(--ink)' }}>
           {error}
@@ -461,16 +494,20 @@ export function FileShareDashboard() {
             <div
               className={`drop-zone${dragOver ? ' dragover' : ''}`}
               id="drop-zone"
+              style={!activeTeamId ? { opacity: 0.55, pointerEvents: 'none' } : undefined}
               onClick={(e) => {
+                if (!activeTeamId) return
                 if ((e.target as HTMLElement).closest('button')) return
                 inputRef.current?.click()
               }}
               onDragOver={(e) => {
+                if (!activeTeamId) return
                 e.preventDefault()
                 setDragOver(true)
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
+                if (!activeTeamId) return
                 e.preventDefault()
                 setDragOver(false)
                 addFiles([...e.dataTransfer.files])
@@ -545,7 +582,7 @@ export function FileShareDashboard() {
               id="generate-btn"
               style={{ display: hasFiles ? undefined : 'none' }}
               onClick={() => void generateShare()}
-              disabled={busy}
+              disabled={busy || !activeTeamId}
             >
               {busy ? 'Uploading…' : 'Upload files'}
             </button>

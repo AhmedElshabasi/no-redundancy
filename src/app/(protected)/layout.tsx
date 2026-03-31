@@ -1,5 +1,7 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { supabaseServerClientOrNull } from '@/lib/supabaseServer'
+import type { TeamRow } from '@/types/team'
 import type { UploadPackageRow } from '@/types/uploadWorkspace'
 import { UploadsWorkspaceProvider } from '@/contexts/UploadsWorkspaceContext'
 import { MainPageShell } from '@/components/MainPageShell'
@@ -19,14 +21,41 @@ export default async function ProtectedLayout({
   const user = data.user
   if (!user) redirect('/login')
 
-  const { data: uploads, error: uploadsError } = await supabase
-    .from('uploads')
-    .select(
-      `
+  const { data: membershipRows } = await supabase
+    .from('team_members')
+    .select('teams(id, name, invite_code)')
+    .eq('user_id', user.id)
+
+  const teams: TeamRow[] = (membershipRows ?? [])
+    .map((row) => {
+      const t = row.teams as TeamRow | TeamRow[] | null | undefined
+      if (Array.isArray(t)) return t[0] ?? null
+      return t ?? null
+    })
+    .filter((t): t is TeamRow => Boolean(t?.id))
+
+  const cookieStore = await cookies()
+  const cookieTeam = cookieStore.get('nr-team-id')?.value
+  let activeTeamId: string | null = null
+  if (cookieTeam && teams.some((t) => t.id === cookieTeam)) {
+    activeTeamId = cookieTeam
+  } else if (teams[0]) {
+    activeTeamId = teams[0].id
+  }
+
+  let list: UploadPackageRow[] = []
+  let uploadsError: { message: string } | null = null
+
+  if (activeTeamId) {
+    const { data: uploads, error } = await supabase
+      .from('uploads')
+      .select(
+        `
         id,
         uploader_email,
         note,
         created_at,
+        team_id,
         upload_files(
           id,
           original_name,
@@ -41,10 +70,14 @@ export default async function ProtectedLayout({
           created_at
         )
       `,
-    )
-    .order('created_at', { ascending: false })
+      )
+      .eq('team_id', activeTeamId)
+      .order('created_at', { ascending: false })
 
-  const list = (uploads ?? []) as UploadPackageRow[]
+    uploadsError = error
+    list = (uploads ?? []) as UploadPackageRow[]
+  }
+
   let serverTotalBytes = 0
   for (const u of list) {
     for (const f of u.upload_files || []) {
@@ -59,9 +92,11 @@ export default async function ProtectedLayout({
         serverUploadCount: list.length,
         serverTotalBytes,
         loadError: uploadsError?.message ?? null,
+        teams,
+        activeTeamId,
       }}
     >
-      <MainPageShell userEmail={user.email ?? null} fileShare={children} />
+      <MainPageShell userEmail={user.email ?? null} fileShare={children} teams={teams} activeTeamId={activeTeamId} />
     </UploadsWorkspaceProvider>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
+import type { TeamRow } from '@/types/team'
 import type { UploadPackageRow } from '@/types/uploadWorkspace'
 
 export type UploadsWorkspaceValue = {
@@ -8,6 +9,8 @@ export type UploadsWorkspaceValue = {
   serverUploadCount: number
   serverTotalBytes: number
   loadError: string | null
+  teams: TeamRow[]
+  activeTeamId: string | null
 }
 
 const UploadsWorkspaceContext = createContext<UploadsWorkspaceValue | null>(null)

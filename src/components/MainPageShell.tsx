@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { ActivityLogPanel } from '@/components/ActivityLogPanel'
 import { RecentTransfersPanel } from '@/components/RecentTransfersPanel'
+import { TeamSwitcher } from '@/components/TeamSwitcher'
+import type { TeamRow } from '@/types/team'
 
 function initialsFromEmail(email: string | null): string {
   if (!email) return 'NR'
@@ -35,9 +37,13 @@ const TOPBAR_TITLES: Record<WorkspacePage, string> = {
 export function MainPageShell({
   userEmail,
   fileShare,
+  teams,
+  activeTeamId,
 }: {
   userEmail: string | null
   fileShare: ReactNode
+  teams: TeamRow[]
+  activeTeamId: string | null
 }) {
   const [dark, setDark] = useState(true)
   const [signOutBusy, setSignOutBusy] = useState(false)
@@ -99,6 +105,11 @@ export function MainPageShell({
                 <div className="sidebar-sub">Secure file sharing</div>
               </div>
             </div>
+          </div>
+
+          <div className="sidebar-section">
+            <div className="sidebar-section-label">Team</div>
+            <TeamSwitcher initialTeams={teams} initialActiveTeamId={activeTeamId} />
           </div>
 
           <div className="sidebar-section">
