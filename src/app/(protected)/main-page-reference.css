@@ -1094,6 +1094,63 @@
   vertical-align: top;
 }
 
+#main-page-root .rt-upload-note {
+  max-width: 14rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#main-page-root .rt-upload-note.rt-upload-note--dialog {
+  display: block;
+  overflow: visible;
+  max-width: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  white-space: pre-wrap;
+}
+
+#main-page-root .rt-note-thread {
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+}
+
+#main-page-root .rt-note-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+#main-page-root .rt-note-item:last-child {
+  border-bottom: none;
+}
+
+#main-page-root .rt-note-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 72px;
+}
+
 #main-page-root .rt-file {
   display: flex;
   align-items: flex-start;

@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import type { UploadPackageRow } from '@/types/uploadWorkspace'
+import type { UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
 function ext(name: string) {
   const parts = name.split('.')
@@ -26,6 +27,11 @@ function formatWhen(iso: string | null) {
     hour: 'numeric',
     minute: '2-digit',
   })
+}
+
+function formatNoteTime(iso: string | null) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function initialsFromEmail(email: string | null): string {
@@ -65,9 +71,30 @@ function packageSummary(u: UploadPackageRow) {
   return { primary, meta, badge }
 }
 
+function sortNotesDesc(notes: UploadNoteRow[] | null | undefined): UploadNoteRow[] {
+  const list = [...(notes || [])]
+  list.sort((a, b) => {
+    const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+    const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+    return tb - ta
+  })
+  return list
+}
+
 export function RecentTransfersPanel() {
+  const router = useRouter()
   const { initialUploads, loadError } = useUploadsWorkspace()
-  const [noteDialog, setNoteDialog] = useState<{ title: string; body: string } | null>(null)
+  const [addNoteFor, setAddNoteFor] = useState<UploadPackageRow | null>(null)
+  const [newNoteBody, setNewNoteBody] = useState('')
+  const [noteBusy, setNoteBusy] = useState(false)
+  const [noteError, setNoteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!addNoteFor) {
+      setNewNoteBody('')
+      setNoteError(null)
+    }
+  }, [addNoteFor])
 
   const copyFirstLink = useCallback((u: UploadPackageRow) => {
     const path = u.upload_files?.[0]?.storage_path
@@ -77,30 +104,112 @@ export function RecentTransfersPanel() {
     void navigator.clipboard.writeText(url)
   }, [])
 
+  const submitNewNote = useCallback(async () => {
+    if (!addNoteFor || !supabaseBrowser) return
+    const body = newNoteBody.trim()
+    if (!body) {
+      setNoteError('Write something before posting.')
+      return
+    }
+    setNoteError(null)
+    setNoteBusy(true)
+    try {
+      const { error } = await supabaseBrowser.from('upload_notes').insert({
+        upload_id: addNoteFor.id,
+        body,
+      })
+      if (error) throw error
+      setNewNoteBody('')
+      router.refresh()
+    } catch (e: unknown) {
+      setNoteError(e instanceof Error ? e.message : 'Could not add note.')
+    } finally {
+      setNoteBusy(false)
+    }
+  }, [addNoteFor, newNoteBody, router])
+
+  const dialogNotes = useMemo(
+    () => (addNoteFor ? sortNotesDesc(addNoteFor.upload_notes) : []),
+    [addNoteFor],
+  )
+
   return (
     <div className="recent-transfers-page">
-      {noteDialog ? (
+      {addNoteFor ? (
         <div
           className="confirm-overlay"
           role="presentation"
-          onClick={() => setNoteDialog(null)}
+          onClick={() => !noteBusy && setAddNoteFor(null)}
         >
           <div
             className="confirm-dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="note-dialog-title"
+            aria-labelledby="add-note-dialog-title"
             onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 440 }}
           >
-            <h2 id="note-dialog-title" className="confirm-dialog-title">
-              {noteDialog.title}
+            <h2 id="add-note-dialog-title" className="confirm-dialog-title">
+              Add a note
             </h2>
-            <p className="confirm-dialog-body" style={{ whiteSpace: 'pre-wrap' }}>
-              {noteDialog.body}
+            <p className="confirm-dialog-body" style={{ marginBottom: 12 }}>
+              Leave a message for <strong>{displayNameFromEmail(addNoteFor.uploader_email)}</strong> about this
+              upload. Anyone signed in can add a note.
             </p>
-            <div className="confirm-dialog-actions">
-              <button type="button" className="secondary-btn" onClick={() => setNoteDialog(null)}>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--muted)' }}>
+                Upload note (when they shared it)
+              </div>
+              <div className="rt-upload-note rt-upload-note--dialog">
+                {addNoteFor.note?.trim() ? addNoteFor.note : '—'}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--muted)' }}>
+                Notes from others
+              </div>
+              {dialogNotes.length === 0 ? (
+                <p className="confirm-dialog-body" style={{ margin: 0, opacity: 0.85 }}>
+                  No notes yet.
+                </p>
+              ) : (
+                <ul className="rt-note-thread">
+                  {dialogNotes.map((n) => (
+                    <li key={n.id} className="rt-note-item">
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>
+                        {(n.author_email ?? 'Someone') + ' · ' + formatNoteTime(n.created_at)}
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <label htmlFor="rt-new-note" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Your note
+            </label>
+            <textarea
+              id="rt-new-note"
+              className="rt-note-textarea"
+              rows={3}
+              value={newNoteBody}
+              onChange={(e) => setNewNoteBody(e.target.value)}
+              placeholder="e.g. Thanks — reviewed the PDF."
+              disabled={noteBusy}
+            />
+            {noteError ? (
+              <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{noteError}</p>
+            ) : null}
+
+            <div className="confirm-dialog-actions" style={{ marginTop: 16 }}>
+              <button type="button" className="secondary-btn" onClick={() => setAddNoteFor(null)} disabled={noteBusy}>
                 Close
+              </button>
+              <button type="button" className="primary-btn" onClick={() => void submitNewNote()} disabled={noteBusy}>
+                {noteBusy ? 'Posting…' : 'Post note'}
               </button>
             </div>
           </div>
@@ -155,6 +264,7 @@ export function RecentTransfersPanel() {
                   <tr>
                     <th>upload</th>
                     <th>uploader</th>
+                    <th>Upload note</th>
                     <th>When</th>
                     <th>Actions</th>
                   </tr>
@@ -162,7 +272,7 @@ export function RecentTransfersPanel() {
                 <tbody>
                   {initialUploads.length === 0 && !loadError ? (
                     <tr>
-                      <td colSpan={4}>
+                      <td colSpan={5}>
                         <div className="empty-state" style={{ margin: 16, border: 'none' }}>
                           No uploads yet. Shared packages will show up here.
                         </div>
@@ -176,6 +286,7 @@ export function RecentTransfersPanel() {
                     const firstUrl = u.upload_files?.[0]?.storage_path
                       ? publicFileUrl(u.upload_files[0].storage_path)
                       : null
+                    const uploadNote = u.note?.trim()
 
                     return (
                       <tr key={u.id}>
@@ -198,28 +309,20 @@ export function RecentTransfersPanel() {
                           </div>
                         </td>
                         <td>
+                          <div className="rt-upload-note" title={uploadNote || undefined}>
+                            {uploadNote ? uploadNote : '—'}
+                          </div>
+                        </td>
+                        <td>
                           <div className="rt-date-meta">{formatWhen(u.created_at)}</div>
                         </td>
                         <td>
                           <div className="rt-actions">
-                            <button
-                              type="button"
-                              className="rt-btn"
-                              onClick={() =>
-                                setNoteDialog({
-                                  title: 'Note',
-                                  body: u.note?.trim() ? u.note : 'No note for this upload.',
-                                })
-                              }
-                            >
-                              Note
+                            <button type="button" className="rt-btn" onClick={() => setAddNoteFor(u)}>
+                              Add note
                             </button>
                             {firstUrl ? (
-                              <button
-                                type="button"
-                                className="rt-btn"
-                                onClick={() => copyFirstLink(u)}
-                              >
+                              <button type="button" className="rt-btn" onClick={() => copyFirstLink(u)}>
                                 Copy link
                               </button>
                             ) : null}
