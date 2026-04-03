@@ -377,8 +377,16 @@
   opacity: .9;
   transition: opacity .2s;
   filter: drop-shadow(0 2px 12px rgba(0,0,0,.5));
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 #sign-in-reference-root .ucalgary-badge:hover { opacity: 1; }
+#sign-in-reference-root .ucalgary-badge:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
 
 /* Input error state */
 #sign-in-reference-root .form-field input.error { border-color: #ff6b6b !important; }

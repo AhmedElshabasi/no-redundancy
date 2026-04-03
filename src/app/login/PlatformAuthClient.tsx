@@ -351,13 +351,20 @@ export function PlatformAuthClient({ supabaseConfigured }: { supabaseConfigured:
           </div>
         </div>
 
-        <div className="ucalgary-badge" style={{ top: 28, right: 28, bottom: 'auto' }}>
+        <a
+          className="ucalgary-badge"
+          href="https://profiles.ucalgary.ca/estacio-pereira"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ top: 28, right: 28, bottom: 'auto' }}
+          aria-label="University of Calgary 60th Anniversary — opens Estacio Pereira UCalgary profile"
+        >
           <img
             src="/sign-in-ref/badge.png"
             alt="University of Calgary 60th Anniversary"
             style={{ width: 180, height: 'auto', display: 'block' }}
           />
-        </div>
+        </a>
       </div>
 
       <div id="screen-confirm" className={`screen${screen === 'confirm' ? ' active' : ''}`}>
