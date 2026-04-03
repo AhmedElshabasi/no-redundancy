@@ -75,9 +75,69 @@ function sortNotesDesc(notes: UploadNoteRow[] | null | undefined): UploadNoteRow
   return list
 }
 
+function packageTotalBytes(u: UploadPackageRow): number {
+  return (u.upload_files || []).reduce((s, f) => s + (typeof f.size === 'number' ? f.size : 0), 0)
+}
+
+function packageNoteCount(u: UploadPackageRow): number {
+  return u.upload_notes?.length ?? 0
+}
+
+function createdAtMs(iso: string | null | undefined): number {
+  if (!iso) return 0
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
+function matchesPackageSearch(u: UploadPackageRow, q: string): boolean {
+  const s = q.trim().toLowerCase()
+  if (!s) return true
+  for (const f of u.upload_files || []) {
+    if (f.original_name.toLowerCase().includes(s)) return true
+  }
+  const email = (u.uploader_email ?? '').toLowerCase()
+  if (email.includes(s)) return true
+  if (displayNameFromEmail(u.uploader_email).toLowerCase().includes(s)) return true
+  if ((u.note ?? '').toLowerCase().includes(s)) return true
+  for (const n of u.upload_notes || []) {
+    if ((n.body ?? '').toLowerCase().includes(s)) return true
+    if ((n.author_email ?? '').toLowerCase().includes(s)) return true
+  }
+  return false
+}
+
+type TransferSortKey = 'newest' | 'oldest' | 'largest' | 'most-notes'
+
+function sortPackages(list: UploadPackageRow[], sortKey: TransferSortKey): UploadPackageRow[] {
+  const next = [...list]
+  switch (sortKey) {
+    case 'newest':
+      next.sort((a, b) => createdAtMs(b.created_at) - createdAtMs(a.created_at))
+      break
+    case 'oldest':
+      next.sort((a, b) => createdAtMs(a.created_at) - createdAtMs(b.created_at))
+      break
+    case 'largest':
+      next.sort((a, b) => packageTotalBytes(b) - packageTotalBytes(a))
+      break
+    case 'most-notes':
+      next.sort((a, b) => {
+        const d = packageNoteCount(b) - packageNoteCount(a)
+        if (d !== 0) return d
+        return createdAtMs(b.created_at) - createdAtMs(a.created_at)
+      })
+      break
+    default:
+      break
+  }
+  return next
+}
+
 export function RecentTransfersPanel() {
   const router = useRouter()
   const { initialUploads, loadError } = useUploadsWorkspace()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortKey, setSortKey] = useState<TransferSortKey>('newest')
   const [addNoteFor, setAddNoteFor] = useState<UploadPackageRow | null>(null)
   const [newNoteBody, setNewNoteBody] = useState('')
   const [noteBusy, setNoteBusy] = useState(false)
@@ -126,6 +186,11 @@ export function RecentTransfersPanel() {
     () => (addNoteFor ? sortNotesDesc(addNoteFor.upload_notes) : []),
     [addNoteFor],
   )
+
+  const visibleUploads = useMemo(() => {
+    const filtered = initialUploads.filter((u) => matchesPackageSearch(u, searchQuery))
+    return sortPackages(filtered, sortKey)
+  }, [initialUploads, searchQuery, sortKey])
 
   return (
     <div className="recent-transfers-page">
@@ -234,15 +299,23 @@ export function RecentTransfersPanel() {
             <div className="rt-toolbar">
               <input
                 className="rt-search"
-                type="text"
+                type="search"
                 placeholder="Search file, uploader, or note"
-                readOnly
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search transfers by file name, uploader, or note"
+                autoComplete="off"
               />
-              <select className="rt-sort" defaultValue="newest">
+              <select
+                className="rt-sort"
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as TransferSortKey)}
+                aria-label="Sort transfers"
+              >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="largest">Largest first</option>
-                <option value="most-opened">Most opened</option>
+                <option value="most-notes">Most notes</option>
               </select>
             </div>
           </div>
@@ -273,7 +346,16 @@ export function RecentTransfersPanel() {
                       </td>
                     </tr>
                   ) : null}
-                  {initialUploads.map((u) => {
+                  {initialUploads.length > 0 && visibleUploads.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="empty-state" style={{ margin: 16, border: 'none' }}>
+                          No transfers match your search.
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  {visibleUploads.map((u) => {
                     const { primary, meta, badge } = packageSummary(u)
                     const email = u.uploader_email
                     const name = displayNameFromEmail(email)
