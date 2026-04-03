@@ -15,6 +15,11 @@ type DeleteConfirmTarget = {
   originalName: string
 }
 
+type TeamDeleteConfirmTarget = {
+  id: string
+  name: string
+}
+
 function ext(name: string) {
   const parts = name.split('.')
   return parts.length > 1 ? parts.pop()!.slice(0, 4).toUpperCase() : 'FILE'
@@ -59,8 +64,15 @@ function isAllowedFile(file: File) {
 }
 
 export function FileShareDashboard() {
-  const { initialUploads, serverUploadCount, serverTotalBytes, loadError, teams, activeTeamId } =
-    useUploadsWorkspace()
+  const {
+    initialUploads,
+    serverUploadCount,
+    serverTotalBytes,
+    loadError,
+    teams,
+    activeTeamId,
+    refreshTeams,
+  } = useUploadsWorkspace()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -74,6 +86,8 @@ export function FileShareDashboard() {
   const [toast, setToast] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmTarget | null>(null)
+  const [teamDeleteConfirm, setTeamDeleteConfirm] = useState<TeamDeleteConfirmTarget | null>(null)
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
 
   const queueBytes = useMemo(() => queue.reduce((a, f) => a + f.size, 0), [queue])
 
@@ -139,13 +153,16 @@ export function FileShareDashboard() {
   )
 
   useEffect(() => {
-    if (!deleteConfirm) return
+    if (!deleteConfirm && !teamDeleteConfirm) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !deletingId) setDeleteConfirm(null)
+      if (e.key !== 'Escape') return
+      if (deletingId || deletingTeamId) return
+      setDeleteConfirm(null)
+      setTeamDeleteConfirm(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [deleteConfirm, deletingId])
+  }, [deleteConfirm, teamDeleteConfirm, deletingId, deletingTeamId])
 
   useEffect(() => {
     const supabase = supabaseBrowser
@@ -357,6 +374,26 @@ export function FileShareDashboard() {
     }
   }
 
+  const runDeleteTeam = async (target: TeamDeleteConfirmTarget) => {
+    if (!supabaseBrowser) {
+      showToast('Supabase is not configured.')
+      return
+    }
+    setDeletingTeamId(target.id)
+    try {
+      const { error: rpcErr } = await supabaseBrowser.rpc('delete_team', { p_team_id: target.id })
+      if (rpcErr) throw rpcErr
+      setTeamDeleteConfirm(null)
+      showToast('Team deleted.')
+      await refreshTeams()
+      router.refresh()
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Could not delete team.')
+    } finally {
+      setDeletingTeamId(null)
+    }
+  }
+
   const shareListBody =
     initialUploads.length === 0 ? (
       <div className="empty-state">No files yet. Upload a PDF or DOCX and it will show up here.</div>
@@ -469,6 +506,50 @@ export function FileShareDashboard() {
         </div>
       ) : null}
 
+      {teamDeleteConfirm ? (
+        <div
+          className="confirm-overlay"
+          role="presentation"
+          onClick={() => {
+            if (!deletingTeamId) setTeamDeleteConfirm(null)
+          }}
+        >
+          <div
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-team-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="delete-team-dialog-title" className="confirm-dialog-title">
+              Delete this team?
+            </h2>
+            <p className="confirm-dialog-body">
+              <strong>{teamDeleteConfirm.name}</strong> and all of its shared uploads will be removed for every
+              member. This cannot be undone.
+            </p>
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={deletingTeamId !== null}
+                onClick={() => setTeamDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="confirm-dialog-delete"
+                disabled={deletingTeamId === teamDeleteConfirm.id}
+                onClick={() => void runDeleteTeam(teamDeleteConfirm)}
+              >
+                {deletingTeamId === teamDeleteConfirm.id ? 'Deleting…' : 'Delete team'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="hero">
         <div className="hero-inner">
           <div>
@@ -531,13 +612,25 @@ export function FileShareDashboard() {
                         <div className="fs-team-insights-code-label">Invite code</div>
                         <div className="fs-team-insights-code-row">
                           <code className="fs-team-insights-code">{t.invite_code}</code>
-                          <button
-                            type="button"
-                            className="secondary-btn fs-team-insights-copy"
-                            onClick={() => copyInviteCode(t.invite_code)}
-                          >
-                            Copy
-                          </button>
+                          <div className="fs-team-insights-code-actions">
+                            <button
+                              type="button"
+                              className="secondary-btn fs-team-insights-copy"
+                              onClick={() => copyInviteCode(t.invite_code)}
+                            >
+                              Copy
+                            </button>
+                            {t.role === 'owner' ? (
+                              <button
+                                type="button"
+                                className="fs-team-insights-delete"
+                                disabled={deletingTeamId === t.id}
+                                onClick={() => setTeamDeleteConfirm({ id: t.id, name: t.name })}
+                              >
+                                Delete
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </li>
