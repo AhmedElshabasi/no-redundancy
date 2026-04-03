@@ -296,7 +296,7 @@ export function FileShareDashboard() {
           }),
         })
         const text = await res.text()
-        let payload: { error?: string; comment?: string; scorePercent?: unknown } = {}
+        let payload: { error?: string; comment?: string; scorePercent?: unknown; model?: string } = {}
         try {
           payload = JSON.parse(text) as typeof payload
         } catch {
@@ -314,8 +314,34 @@ export function FileShareDashboard() {
         }
         if (ac.signal.aborted || activeTeamIdRef.current !== teamSnapshot) return
         const clamped = Math.min(100, Math.max(0, Math.round(score)))
+        const commentText = payload.comment.trim()
+        const modelName = typeof payload.model === 'string' ? payload.model : null
+
+        if (supabaseBrowser) {
+          const { data: authData } = await supabaseBrowser.auth.getUser()
+          const uid = authData.user?.id
+          if (uid) {
+            const { error: persistErr } = await supabaseBrowser.from('ai_insight_runs').insert({
+              team_id: teamSnapshot,
+              created_by: uid,
+              rubric_upload_id: rubricPkg.id,
+              report_upload_id: reportRow.uploadId,
+              report_file_id: reportRow.fileId,
+              rubric_label_snapshot: rubricLabel,
+              report_label_snapshot: reportLabel,
+              comment: commentText,
+              score_percent: clamped,
+              model: modelName,
+            })
+            if (persistErr) {
+              console.error('[ai_insight_runs]', persistErr)
+              showToast('Insights generated, but could not save to team history.')
+            }
+          }
+        }
+
         setInsightsResult({
-          comment: payload.comment.trim(),
+          comment: commentText,
           scorePercent: clamped,
           rubricLabel,
           reportLabel,
