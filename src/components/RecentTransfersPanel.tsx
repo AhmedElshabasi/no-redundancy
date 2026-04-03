@@ -214,7 +214,7 @@ export function RecentTransfersPanel() {
         <div className="rt-hero-inner">
           <div>
             <div className="rt-kicker">Transfer intelligence</div>
-            <h1>Recent transfers</h1>
+            <h1>Uploads</h1>
             <p>
               Track every file handoff, see what got opened, and catch links that are about to die before someone pings
               you saying the download is broken.

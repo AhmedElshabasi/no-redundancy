@@ -1214,7 +1214,7 @@
   cursor: wait;
 }
 
-/* —— Recent transfers —— */
+/* —— Uploads —— */
 #main-page-root .recent-transfers-page {
   display: flex;
   flex-direction: column;

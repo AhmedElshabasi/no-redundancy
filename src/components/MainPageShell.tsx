@@ -29,7 +29,7 @@ type WorkspacePage = 'file-share' | 'recent-transfers' | 'activity-log'
 
 const TOPBAR_TITLES: Record<WorkspacePage, string> = {
   'file-share': 'File Share',
-  'recent-transfers': 'Recent Transfers',
+  'recent-transfers': 'Uploads',
   'activity-log': 'Activity Log',
 }
 
@@ -121,7 +121,7 @@ export function MainPageShell({
               className={`nav-item${activePage === 'recent-transfers' ? ' active' : ''}`}
               onClick={() => setActivePage('recent-transfers')}
             >
-              <span>◌</span> Recent Transfers
+              <span>◌</span> Uploads
             </button>
             <button
               type="button"

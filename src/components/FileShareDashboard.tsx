@@ -810,7 +810,7 @@ export function FileShareDashboard() {
 
         <section className="card">
           <div className="card-header">
-            <div className="card-title">📥 Shared files</div>
+            <div className="card-title">📥 Insights </div>
           </div>
           <div className="card-body">
             <div className="share-list" id="share-list">
