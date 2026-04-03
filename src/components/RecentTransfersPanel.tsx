@@ -287,7 +287,14 @@ export function RecentTransfersPanel() {
                             <div className="rt-file-badge">{badge}</div>
                             <div>
                               <div className="rt-file-name">{primary}</div>
-                              <div className="rt-file-meta">{meta}</div>
+                              <div className="rt-file-meta">
+                                {meta}
+                                {u.is_rubric ? (
+                                  <span className="rt-rubric-tag" title="Rubric">
+                                    Rubric
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         </td>

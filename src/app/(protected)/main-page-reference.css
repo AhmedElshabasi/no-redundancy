@@ -835,9 +835,27 @@
 }
 
 #main-page-root .share-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 700;
   margin-bottom: 4px;
+}
+
+#main-page-root .share-rubric-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(26, 122, 74, 0.35);
+  background: rgba(26, 122, 74, 0.1);
+  color: var(--green);
 }
 
 #main-page-root .share-sub {
@@ -945,6 +963,27 @@
   color: var(--muted);
   margin-bottom: 8px;
   font-weight: 600;
+}
+
+#main-page-root .form-field label.upload-rubric-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+#main-page-root .form-field label.upload-rubric-check input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  cursor: pointer;
+  accent-color: var(--red);
 }
 
 #main-page-root .form-field input,
@@ -1456,6 +1495,27 @@
   font-size: 12px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+#main-page-root .rt-file-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#main-page-root .rt-rubric-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--green);
+  border: 1px solid rgba(26, 122, 74, 0.35);
+  background: rgba(26, 122, 74, 0.1);
 }
 
 #main-page-root .rt-user {

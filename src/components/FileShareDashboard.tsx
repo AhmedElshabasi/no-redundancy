@@ -78,6 +78,7 @@ export function FileShareDashboard() {
 
   const [queue, setQueue] = useState<File[]>([])
   const [note, setNote] = useState('')
+  const [isRubric, setIsRubric] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -280,6 +281,7 @@ export function FileShareDashboard() {
           team_id: activeTeamId,
           uploader_email: user.email ?? null,
           note: note.trim() || null,
+          is_rubric: isRubric,
         })
         .select('id')
         .single()
@@ -312,10 +314,13 @@ export function FileShareDashboard() {
       }
 
       const n = queue.length
-      const meta = `${n} file${n === 1 ? '' : 's'} • ${fmtSize(queueBytes)}${note.trim() ? ' • note added' : ''}`
+      const meta = `${n} file${n === 1 ? '' : 's'} • ${fmtSize(queueBytes)}${note.trim() ? ' • note added' : ''}${
+        isRubric ? ' • Rubric' : ''
+      }`
       setLastBatchMeta(meta)
       setQueue([])
       setNote('')
+      setIsRubric(false)
       setShowResult(true)
       showToast('Upload complete.')
       router.refresh()
@@ -408,6 +413,11 @@ export function FileShareDashboard() {
               <div>
                 <div className="share-title">
                   {files.length} file{files.length === 1 ? '' : 's'} • {fmtSize(total)}
+                  {u.is_rubric ? (
+                    <span className="share-rubric-badge" title="Marked as rubric">
+                      Rubric
+                    </span>
+                  ) : null}
                 </div>
                 <div className="share-sub">
                   {u.uploader_email ?? 'Unknown'} • {formatShortDate(u.created_at)}
@@ -679,7 +689,7 @@ export function FileShareDashboard() {
       <div className="layout">
         <section className="card">
           <div className="card-header">
-            <div className="card-title">📤 Create share</div>
+            <div className="card-title">📤 Upload</div>
           </div>
           <div className="card-body">
             <div
@@ -756,6 +766,17 @@ export function FileShareDashboard() {
             </div>
 
             <div className="form-grid" id="share-settings" style={{ display: hasFiles ? undefined : 'none' }}>
+              <div className="form-field full">
+                <label className="upload-rubric-check" htmlFor="upload-is-rubric">
+                  <input
+                    id="upload-is-rubric"
+                    type="checkbox"
+                    checked={isRubric}
+                    onChange={(e) => setIsRubric(e.target.checked)}
+                  />
+                  <span>Rubric</span>
+                </label>
+              </div>
               <div className="form-field full">
                 <label htmlFor="note">Share note</label>
                 <textarea
