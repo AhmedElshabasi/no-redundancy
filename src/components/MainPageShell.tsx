@@ -97,7 +97,7 @@ export function MainPageShell({
               <div className="icon">📁</div>
               <div>
                 <div className="sidebar-wordmark">NoRedundancy</div>
-                <div className="sidebar-sub">Secure file sharing</div>
+                <div className="sidebar-sub">AI-powered Report Insights</div>
               </div>
             </div>
           </div>

@@ -576,82 +576,6 @@ export function FileShareDashboard() {
         </div>
       </section>
 
-      <section className="card fs-team-insights" aria-labelledby="fs-team-insights-title">
-        <div className="card-header">
-          <div className="card-title" id="fs-team-insights-title">
-            Your teams &amp; invite codes
-          </div>
-        </div>
-        <div className="card-body">
-          {teams.length === 0 ? (
-            <p className="fs-team-insights-lead">
-              You are not in any team yet. Use the sidebar to create one (you will get an invite code) or join with
-              someone else&apos;s code. Then pick the active team there — uploads on this page go to that group only.
-            </p>
-          ) : (
-            <>
-              <p className="fs-team-insights-lead">
-                You are in <strong>{teams.length}</strong> team{teams.length === 1 ? '' : 's'} (
-                {teamInsightCounts.owned} you created, {teamInsightCounts.joined} you joined). New uploads use the team
-                selected in the sidebar (<strong>Active</strong> below). Share the invite
-                code so people can join the same group and see those files.
-              </p>
-              <ul className="fs-team-insights-list">
-                {teamsSorted.map((t) => {
-                  const isActive = t.id === activeTeamId
-                  const roleLabel =
-                    t.role === 'owner' ? 'Owner' : t.role === 'member' ? 'Member' : null
-                  return (
-                    <li key={t.id} className="fs-team-insights-row">
-                      <div className="fs-team-insights-top">
-                        <span className="fs-team-insights-name">{t.name}</span>
-                        <span className="fs-team-insights-badges">
-                          {isActive ? (
-                            <span className="fs-team-insights-badge fs-team-insights-badge--active">Active</span>
-                          ) : null}
-                          {roleLabel ? (
-                            <span
-                              className={`fs-team-insights-badge fs-team-insights-badge--${t.role ?? 'member'}`}
-                            >
-                              {roleLabel}
-                            </span>
-                          ) : null}
-                        </span>
-                      </div>
-                      <div className="fs-team-insights-code-block">
-                        <div className="fs-team-insights-code-label">Invite code</div>
-                        <div className="fs-team-insights-code-row">
-                          <code className="fs-team-insights-code">{t.invite_code}</code>
-                          <div className="fs-team-insights-code-actions">
-                            <button
-                              type="button"
-                              className="secondary-btn fs-team-insights-copy"
-                              onClick={() => copyInviteCode(t.invite_code)}
-                            >
-                              Copy
-                            </button>
-                            {t.role === 'owner' ? (
-                              <button
-                                type="button"
-                                className="fs-team-insights-delete"
-                                disabled={deletingTeamId === t.id}
-                                onClick={() => setTeamDeleteConfirm({ id: t.id, name: t.name })}
-                              >
-                                Delete
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </>
-          )}
-        </div>
-      </section>
-
       <div className="dashboard-grid">
         <div className="stat-card red">
           <div className="stat-label">Files queued</div>
@@ -819,6 +743,82 @@ export function FileShareDashboard() {
           </div>
         </section>
       </div>
+
+      <section className="card fs-team-insights" aria-labelledby="fs-team-insights-title">
+        <div className="card-header">
+          <div className="card-title" id="fs-team-insights-title">
+            Your teams &amp; invite codes
+          </div>
+        </div>
+        <div className="card-body">
+          {teams.length === 0 ? (
+            <p className="fs-team-insights-lead">
+              You are not in any team yet. Use the sidebar to create one (you will get an invite code) or join with
+              someone else&apos;s code. Then pick the active team there — uploads on this page go to that group only.
+            </p>
+          ) : (
+            <>
+              <p className="fs-team-insights-lead">
+                You are in <strong>{teams.length}</strong> team{teams.length === 1 ? '' : 's'} (
+                {teamInsightCounts.owned} you created, {teamInsightCounts.joined} you joined). New uploads use the team
+                selected in the sidebar (<strong>Active</strong> in this list). Share the invite code so people can join
+                the same group and see those files.
+              </p>
+              <ul className="fs-team-insights-list">
+                {teamsSorted.map((t) => {
+                  const isActive = t.id === activeTeamId
+                  const roleLabel =
+                    t.role === 'owner' ? 'Owner' : t.role === 'member' ? 'Member' : null
+                  return (
+                    <li key={t.id} className="fs-team-insights-row">
+                      <div className="fs-team-insights-top">
+                        <span className="fs-team-insights-name">{t.name}</span>
+                        <span className="fs-team-insights-badges">
+                          {isActive ? (
+                            <span className="fs-team-insights-badge fs-team-insights-badge--active">Active</span>
+                          ) : null}
+                          {roleLabel ? (
+                            <span
+                              className={`fs-team-insights-badge fs-team-insights-badge--${t.role ?? 'member'}`}
+                            >
+                              {roleLabel}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                      <div className="fs-team-insights-code-block">
+                        <div className="fs-team-insights-code-label">Invite code</div>
+                        <div className="fs-team-insights-code-row">
+                          <code className="fs-team-insights-code">{t.invite_code}</code>
+                          <div className="fs-team-insights-code-actions">
+                            <button
+                              type="button"
+                              className="secondary-btn fs-team-insights-copy"
+                              onClick={() => copyInviteCode(t.invite_code)}
+                            >
+                              Copy
+                            </button>
+                            {t.role === 'owner' ? (
+                              <button
+                                type="button"
+                                className="fs-team-insights-delete"
+                                disabled={deletingTeamId === t.id}
+                                onClick={() => setTeamDeleteConfirm({ id: t.id, name: t.name })}
+                              >
+                                Delete
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      </section>
 
       <div className={`toast${toast ? ' show' : ''}`} id="toast" role="status">
         {toast ?? ''}
