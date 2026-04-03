@@ -1,4 +1,56 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
+import type { UploadPackageRow } from '@/types/uploadWorkspace'
+
+function sortPackagesByCreatedDesc(a: UploadPackageRow, b: UploadPackageRow) {
+  const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+  const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+  return tb - ta
+}
+
+function packagePrimaryLabel(u: UploadPackageRow): string {
+  const files = u.upload_files || []
+  const first = files[0]
+  if (!first) return 'Upload'
+  if (files.length === 1) return first.original_name
+  return `${first.original_name} (+${files.length - 1} more)`
+}
+
+function formatShortDate(iso: string | null) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function ActivityLogPanel() {
+  const { initialUploads, activeTeamId } = useUploadsWorkspace()
+
+  const rubricPackages = useMemo(() => {
+    return initialUploads
+      .filter((u) => u.is_rubric && (u.upload_files?.length ?? 0) > 0)
+      .sort(sortPackagesByCreatedDesc)
+  }, [initialUploads])
+
+  const [selectedRubricId, setSelectedRubricId] = useState('')
+
+  useEffect(() => {
+    if (rubricPackages.length === 0) {
+      setSelectedRubricId('')
+      return
+    }
+    setSelectedRubricId((prev) =>
+      rubricPackages.some((p) => p.id === prev) ? prev : rubricPackages[0].id,
+    )
+  }, [rubricPackages])
+
+  const hasRubrics = rubricPackages.length > 0
+
   return (
     <div className="activity-log-page">
       <section className="al-hero">
@@ -11,9 +63,30 @@ export function ActivityLogPanel() {
               who touched what, and whether it matters.
             </p>
           </div>
-          <div className="al-live-chip">
-            <span className="al-live-dot" />
-            Live audit trail
+          <div className="al-rubric-dropdown-wrap">
+            <label className="al-rubric-dropdown-label" htmlFor="al-rubric-select">
+              Rubric
+            </label>
+            <select
+              id="al-rubric-select"
+              className="al-rubric-dropdown"
+              aria-label="Choose rubric"
+              value={selectedRubricId}
+              onChange={(e) => setSelectedRubricId(e.target.value)}
+              disabled={!activeTeamId || !hasRubrics}
+            >
+              {!activeTeamId ? (
+                <option value="">Select a team in the sidebar</option>
+              ) : !hasRubrics ? (
+                <option value="">No rubrics uploaded yet</option>
+              ) : (
+                rubricPackages.map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {packagePrimaryLabel(pkg)} · {formatShortDate(pkg.created_at)}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
         </div>
       </section>
