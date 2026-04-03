@@ -4,16 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import type { UploadFileRow, UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
+import type { UploadPackageRow } from '@/types/uploadWorkspace'
 
 export type { UploadFileRow, UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
-
-type DeleteConfirmTarget = {
-  uploadId: string
-  fileId: string
-  storagePath: string
-  originalName: string
-}
 
 type TeamDeleteConfirmTarget = {
   id: string
@@ -63,16 +56,41 @@ function isAllowedFile(file: File) {
   return false
 }
 
-function isPdfUploadFile(f: UploadFileRow) {
-  const m = (f.mime || '').toLowerCase()
-  if (m === 'application/pdf') return true
-  return ext(f.original_name) === 'PDF'
+function sortPackagesByCreatedDesc(a: UploadPackageRow, b: UploadPackageRow) {
+  const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+  const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+  return tb - ta
 }
 
-type PdfSummaryModal =
-  | { status: 'loading'; fileId: string; fileName: string }
-  | { status: 'done'; fileId: string; fileName: string; summary: string; truncated?: boolean; model?: string }
-  | { status: 'error'; fileId: string; fileName: string; message: string }
+function packagePrimaryLabel(u: UploadPackageRow): string {
+  const files = u.upload_files || []
+  const first = files[0]
+  if (!first) return 'Upload'
+  if (files.length === 1) return first.original_name
+  return `${first.original_name} (+${files.length - 1} more)`
+}
+
+type InsightsWizard =
+  | { phase: 'idle' }
+  | {
+      phase: 'pick-rubric'
+      reportUploadId: string
+      reportFileId: string
+      reportLabel: string
+    }
+  | {
+      phase: 'pick-report'
+      rubricUploadId: string
+      rubricLabel: string
+    }
+  | {
+      phase: 'running'
+      rubricLabel: string
+      reportLabel: string
+      rubricUploadId: string
+      reportUploadId: string
+      reportFileId: string
+    }
 
 export function FileShareDashboard() {
   const {
@@ -96,11 +114,9 @@ export function FileShareDashboard() {
   const [showResult, setShowResult] = useState(false)
   const [lastBatchMeta, setLastBatchMeta] = useState('')
   const [toast, setToast] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmTarget | null>(null)
   const [teamDeleteConfirm, setTeamDeleteConfirm] = useState<TeamDeleteConfirmTarget | null>(null)
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
-  const [pdfSummaryModal, setPdfSummaryModal] = useState<PdfSummaryModal | null>(null)
+  const [insightsWizard, setInsightsWizard] = useState<InsightsWizard>({ phase: 'idle' })
 
   const queueBytes = useMemo(() => queue.reduce((a, f) => a + f.size, 0), [queue])
 
@@ -142,108 +158,144 @@ export function FileShareDashboard() {
     [showToast],
   )
 
-  const downloadFile = useCallback(
-    async (storagePath: string, filename: string) => {
-      if (!supabaseBrowser) {
-        showToast('Supabase is not configured.')
-        return
+  const rubricPackages = useMemo(() => {
+    return initialUploads
+      .filter((u) => u.is_rubric && (u.upload_files?.length ?? 0) > 0)
+      .sort(sortPackagesByCreatedDesc)
+  }, [initialUploads])
+
+  const reportPackages = useMemo(() => {
+    return initialUploads
+      .filter((u) => !u.is_rubric && (u.upload_files?.length ?? 0) > 0)
+      .sort(sortPackagesByCreatedDesc)
+  }, [initialUploads])
+
+  const reportOptions = useMemo(() => {
+    const rows: { uploadId: string; fileId: string; label: string; fileName: string }[] = []
+    for (const u of reportPackages) {
+      for (const f of u.upload_files || []) {
+        rows.push({
+          uploadId: u.id,
+          fileId: f.id,
+          fileName: f.original_name,
+          label: `${f.original_name} · ${formatShortDate(u.created_at)}`,
+        })
       }
-      const { data, error } = await supabaseBrowser.storage.from('uploads').createSignedUrl(storagePath, 3600)
-      if (error || !data?.signedUrl) {
-        showToast('Could not download file.')
-        return
-      }
-      const a = document.createElement('a')
-      a.href = data.signedUrl
-      a.download = filename
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-    },
-    [showToast],
-  )
+    }
+    return rows
+  }, [reportPackages])
+
+  const hasReportUploads = reportPackages.length > 0
 
   useEffect(() => {
-    if (!deleteConfirm && !teamDeleteConfirm) return
+    setInsightsWizard({ phase: 'idle' })
+  }, [activeTeamId])
+
+  useEffect(() => {
+    if (!teamDeleteConfirm) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (deletingId || deletingTeamId) return
-      setDeleteConfirm(null)
+      if (deletingTeamId) return
       setTeamDeleteConfirm(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [deleteConfirm, teamDeleteConfirm, deletingId, deletingTeamId])
+  }, [teamDeleteConfirm, deletingTeamId])
 
   useEffect(() => {
-    if (!pdfSummaryModal) return
+    if (
+      insightsWizard.phase !== 'pick-rubric' &&
+      insightsWizard.phase !== 'pick-report' &&
+      insightsWizard.phase !== 'running'
+    ) {
+      return
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPdfSummaryModal(null)
+      if (e.key === 'Escape') setInsightsWizard({ phase: 'idle' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pdfSummaryModal])
+  }, [insightsWizard.phase])
 
-  const requestPdfSummary = useCallback(async (fileId: string, fileName: string) => {
-    setPdfSummaryModal({ status: 'loading', fileId, fileName })
-    try {
-      const res = await fetch('/api/ai/summarize-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId }),
-      })
-      const raw = await res.text()
-      let data: {
-        summary?: string
-        error?: string
-        truncated?: boolean
-        model?: string
-      }
-      try {
-        data = JSON.parse(raw) as typeof data
-      } catch {
-        setPdfSummaryModal({
-          status: 'error',
-          fileId,
-          fileName,
-          message:
-            res.status >= 500
-              ? `Server error (${res.status}). If this persists, check Vercel logs and OPENAI_API_KEY.`
-              : 'Invalid response from server (not JSON).',
-        })
-        return
-      }
-      if (!res.ok) {
-        setPdfSummaryModal({
-          status: 'error',
-          fileId,
-          fileName,
-          message: data.error || `Could not summarize PDF (${res.status})`,
-        })
-        return
-      }
-      if (!data.summary) {
-        setPdfSummaryModal({ status: 'error', fileId, fileName, message: 'No summary returned' })
-        return
-      }
-      setPdfSummaryModal({
-        status: 'done',
-        fileId,
-        fileName,
-        summary: data.summary,
-        truncated: data.truncated,
-        model: data.model,
-      })
-    } catch (e: unknown) {
-      setPdfSummaryModal({
-        status: 'error',
-        fileId,
-        fileName,
-        message: e instanceof Error ? e.message : 'Network error',
-      })
+  const startGenerateInsights = useCallback(() => {
+    if (!activeTeamId) return
+    const rubrics = rubricPackages
+    const reports = reportPackages
+    if (reports.length === 0) return
+    if (rubrics.length === 0) {
+      showToast('Please upload a rubric first.')
+      return
     }
+    const defaultReportPkg = reports[0]
+    const defaultFile = defaultReportPkg.upload_files?.[0]
+    if (!defaultFile) return
+
+    if (rubrics.length === 1 && reports.length === 1) {
+      setInsightsWizard({
+        phase: 'running',
+        rubricLabel: packagePrimaryLabel(rubrics[0]),
+        reportLabel: defaultFile.original_name,
+        rubricUploadId: rubrics[0].id,
+        reportUploadId: defaultReportPkg.id,
+        reportFileId: defaultFile.id,
+      })
+      return
+    }
+    if (rubrics.length === 1) {
+      setInsightsWizard({
+        phase: 'pick-report',
+        rubricUploadId: rubrics[0].id,
+        rubricLabel: packagePrimaryLabel(rubrics[0]),
+      })
+      return
+    }
+    setInsightsWizard({
+      phase: 'pick-rubric',
+      reportUploadId: defaultReportPkg.id,
+      reportFileId: defaultFile.id,
+      reportLabel: defaultFile.original_name,
+    })
+  }, [activeTeamId, rubricPackages, reportPackages, showToast])
+
+  const onPickRubric = useCallback(
+    (rubricPkg: UploadPackageRow) => {
+      setInsightsWizard((w) => {
+        if (w.phase !== 'pick-rubric') return w
+        if (reportPackages.length === 1) {
+          const rp = reportPackages[0]
+          const rf = rp.upload_files?.[0]
+          if (!rf) return { phase: 'idle' }
+          return {
+            phase: 'running',
+            rubricLabel: packagePrimaryLabel(rubricPkg),
+            reportLabel: rf.original_name,
+            rubricUploadId: rubricPkg.id,
+            reportUploadId: rp.id,
+            reportFileId: rf.id,
+          }
+        }
+        return {
+          phase: 'pick-report',
+          rubricUploadId: rubricPkg.id,
+          rubricLabel: packagePrimaryLabel(rubricPkg),
+        }
+      })
+    },
+    [reportPackages],
+  )
+
+  const onPickReport = useCallback((uploadId: string, fileId: string, fileName: string) => {
+    setInsightsWizard((w) => {
+      if (w.phase !== 'pick-report') return w
+      return {
+        phase: 'running',
+        rubricLabel: w.rubricLabel,
+        reportLabel: fileName,
+        rubricUploadId: w.rubricUploadId,
+        reportUploadId: uploadId,
+        reportFileId: fileId,
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -415,51 +467,6 @@ export function FileShareDashboard() {
     }
   }
 
-  const runDeleteSharedFile = async (target: DeleteConfirmTarget) => {
-    if (!supabaseBrowser) {
-      showToast('Supabase is not configured.')
-      return
-    }
-    setDeletingId(target.fileId)
-    try {
-      const { error: storageErr } = await supabaseBrowser.storage.from('uploads').remove([target.storagePath])
-      if (storageErr) {
-        console.warn('[uploads] storage remove:', storageErr.message)
-      }
-
-      const { data: deletedRows, error: fileErr } = await supabaseBrowser
-        .from('upload_files')
-        .delete()
-        .eq('id', target.fileId)
-        .select('id')
-
-      if (fileErr) throw fileErr
-      if (!deletedRows?.length) {
-        throw new Error(
-          'Delete did not remove any file. You don\'t have permissions to delete this file.',
-        )
-      }
-
-      const { data: remaining } = await supabaseBrowser
-        .from('upload_files')
-        .select('id')
-        .eq('upload_id', target.uploadId)
-        .limit(1)
-      if (!remaining?.length) {
-        const { error: uploadErr } = await supabaseBrowser.from('uploads').delete().eq('id', target.uploadId)
-        if (uploadErr) console.warn('[uploads] delete package:', uploadErr.message)
-      }
-
-      setDeleteConfirm(null)
-      showToast('File deleted.')
-      router.refresh()
-    } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Delete failed.')
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
   const runDeleteTeam = async (target: TeamDeleteConfirmTarget) => {
     if (!supabaseBrowser) {
       showToast('Supabase is not configured.')
@@ -480,137 +487,8 @@ export function FileShareDashboard() {
     }
   }
 
-  const shareListBody =
-    initialUploads.length === 0 ? (
-      <div className="empty-state">No files yet. Upload a PDF or DOCX and it will show up here.</div>
-    ) : (
-      initialUploads.map((u) => {
-        const files = u.upload_files || []
-        const total = files.reduce((s, f) => s + (typeof f.size === 'number' ? f.size : 0), 0)
-
-        return (
-          <div key={u.id} className="share-item">
-            <div className="share-head">
-              <div>
-                <div className="share-title">
-                  {files.length} file{files.length === 1 ? '' : 's'} • {fmtSize(total)}
-                  {u.is_rubric ? (
-                    <span className="share-rubric-badge" title="Marked as rubric">
-                      Rubric
-                    </span>
-                  ) : null}
-                </div>
-                <div className="share-sub">
-                  {u.uploader_email ?? 'Unknown'} • {formatShortDate(u.created_at)}
-                  {u.note ? ` • ${u.note}` : ''}
-                </div>
-              </div>
-            </div>
-            <div className="share-file-rows">
-              {files.map((f) => {
-                const size = typeof f.size === 'number' ? f.size : 0
-                return (
-                  <div key={f.id} className="file-row share-file-row">
-                    <div className="file-row-left">
-                      <div className="file-badge">{ext(f.original_name)}</div>
-                      <div>
-                        <div className="file-name">{f.original_name}</div>
-                        <div className="file-meta">{fmtSize(size)}</div>
-                      </div>
-                    </div>
-                    <div className="share-file-actions">
-                      {supabaseBrowser ? (
-                        <button
-                          type="button"
-                          className="mini-btn download-link"
-                          onClick={() => void downloadFile(f.storage_path, f.original_name)}
-                        >
-                          Download
-                        </button>
-                      ) : (
-                        <span className="share-sub" style={{ flexShrink: 0 }}>
-                          Unavailable
-                        </span>
-                      )}
-                      {isPdfUploadFile(f) ? (
-                        <button
-                          type="button"
-                          className="mini-btn pdf-summary-btn"
-                          disabled={
-                            pdfSummaryModal?.status === 'loading' && pdfSummaryModal.fileId === f.id
-                          }
-                          onClick={() => void requestPdfSummary(f.id, f.original_name)}
-                        >
-                          {pdfSummaryModal?.status === 'loading' && pdfSummaryModal.fileId === f.id
-                            ? 'Summarizing…'
-                            : 'AI summary'}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="file-remove share-file-delete"
-                        disabled={deletingId === f.id}
-                        aria-label={`Delete ${f.original_name}`}
-                        onClick={() =>
-                          setDeleteConfirm({
-                            uploadId: u.id,
-                            fileId: f.id,
-                            storagePath: f.storage_path,
-                            originalName: f.original_name,
-                          })
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })
-    )
-
   return (
     <>
-      {deleteConfirm ? (
-        <div
-          className="confirm-overlay"
-          role="presentation"
-          onClick={() => setDeleteConfirm(null)}
-        >
-          <div
-            className="confirm-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-dialog-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="delete-dialog-title" className="confirm-dialog-title">
-              Delete this file?
-            </h2>
-            <p className="confirm-dialog-body">
-              <strong>{deleteConfirm.originalName}</strong> will be removed from storage and the database. This
-              cannot be undone.
-            </p>
-            <div className="confirm-dialog-actions">
-              <button type="button" className="secondary-btn" onClick={() => setDeleteConfirm(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="confirm-dialog-delete"
-                disabled={deletingId === deleteConfirm.fileId}
-                onClick={() => void runDeleteSharedFile(deleteConfirm)}
-              >
-                {deletingId === deleteConfirm.fileId ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {teamDeleteConfirm ? (
         <div
           className="confirm-overlay"
@@ -655,47 +533,86 @@ export function FileShareDashboard() {
         </div>
       ) : null}
 
-      {pdfSummaryModal ? (
+      {insightsWizard.phase === 'pick-rubric' ? (
         <div
           className="confirm-overlay"
           role="presentation"
-          onClick={() => setPdfSummaryModal(null)}
+          onClick={() => setInsightsWizard({ phase: 'idle' })}
         >
           <div
-            className="confirm-dialog pdf-summary-dialog"
+            className="confirm-dialog insights-pick-dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="pdf-summary-title"
+            aria-labelledby="insights-pick-rubric-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="pdf-summary-title" className="confirm-dialog-title">
-              AI summary
+            <h2 id="insights-pick-rubric-title" className="confirm-dialog-title">
+              Choose a rubric
             </h2>
-            <p className="confirm-dialog-body" style={{ marginBottom: 12 }}>
-              <strong>{pdfSummaryModal.fileName}</strong>
-              {pdfSummaryModal.status === 'done' && pdfSummaryModal.truncated ? (
-                <span style={{ display: 'block', marginTop: 8, fontWeight: 400, opacity: 0.85 }}>
-                  Only the start of the document was sent to the model because of length limits.
-                </span>
-              ) : null}
+            <p className="confirm-dialog-body">
+              {reportPackages.length === 1 ? (
+                <>
+                  Multiple rubrics are available. Pick one to use with{' '}
+                  <strong>{insightsWizard.reportLabel}</strong>.
+                </>
+              ) : (
+                <>Multiple rubrics are available. Pick one, then choose which report to analyze.</>
+              )}
             </p>
-            {pdfSummaryModal.status === 'loading' ? (
-              <p className="pdf-summary-status">Extracting text and calling the model…</p>
-            ) : null}
-            {pdfSummaryModal.status === 'error' ? (
-              <p className="pdf-summary-error">{pdfSummaryModal.message}</p>
-            ) : null}
-            {pdfSummaryModal.status === 'done' ? (
-              <>
-                {pdfSummaryModal.model ? (
-                  <p className="pdf-summary-model-meta">Model: {pdfSummaryModal.model}</p>
-                ) : null}
-                <div className="pdf-summary-body">{pdfSummaryModal.summary}</div>
-              </>
-            ) : null}
-            <div className="confirm-dialog-actions" style={{ marginTop: 16 }}>
-              <button type="button" className="secondary-btn" onClick={() => setPdfSummaryModal(null)}>
-                Close
+            <ul className="insights-pick-list">
+              {rubricPackages.map((pkg) => (
+                <li key={pkg.id}>
+                  <button type="button" className="insights-pick-row" onClick={() => onPickRubric(pkg)}>
+                    {packagePrimaryLabel(pkg)}
+                    <span className="insights-pick-meta">{formatShortDate(pkg.created_at)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="confirm-dialog-actions">
+              <button type="button" className="secondary-btn" onClick={() => setInsightsWizard({ phase: 'idle' })}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {insightsWizard.phase === 'pick-report' ? (
+        <div
+          className="confirm-overlay"
+          role="presentation"
+          onClick={() => setInsightsWizard({ phase: 'idle' })}
+        >
+          <div
+            className="confirm-dialog insights-pick-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="insights-pick-report-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="insights-pick-report-title" className="confirm-dialog-title">
+              Choose a report
+            </h2>
+            <p className="confirm-dialog-body">
+              Rubric: <strong>{insightsWizard.rubricLabel}</strong>
+            </p>
+            <ul className="insights-pick-list">
+              {reportOptions.map((row) => (
+                <li key={`${row.uploadId}-${row.fileId}`}>
+                  <button
+                    type="button"
+                    className="insights-pick-row"
+                    onClick={() => onPickReport(row.uploadId, row.fileId, row.fileName)}
+                  >
+                    {row.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="confirm-dialog-actions">
+              <button type="button" className="secondary-btn" onClick={() => setInsightsWizard({ phase: 'idle' })}>
+                Cancel
               </button>
             </div>
           </div>
@@ -850,7 +767,7 @@ export function FileShareDashboard() {
             <div className="result-box" id="share-result" style={{ display: showResult ? 'block' : 'none' }}>
               <div className="result-head">Upload complete</div>
               <div className="helper" id="share-meta-text">
-                {lastBatchMeta || 'Your files are listed in Shared files.'}
+                {lastBatchMeta || 'Your files are ready — open Insights to generate a report.'}
               </div>
             </div>
           </div>
@@ -858,11 +775,46 @@ export function FileShareDashboard() {
 
         <section className="card card--accent-gold">
           <div className="card-header">
-            <div className="card-title">📥 Insights </div>
+            <div className="card-title">📥 Insights</div>
           </div>
           <div className="card-body">
-            <div className="share-list" id="share-list">
-              {shareListBody}
+            <div className="insights-panel" id="insights-panel">
+              {!activeTeamId ? (
+                <p className="insights-placeholder insights-placeholder--muted">
+                  Select a team in the sidebar to use insights.
+                </p>
+              ) : insightsWizard.phase === 'running' ? (
+                <>
+                  <div className="insights-running-rows">
+                    <div className="insights-running-line">
+                      <span className="insights-running-label">Rubric</span>
+                      <span className="insights-running-value">{insightsWizard.rubricLabel}</span>
+                    </div>
+                    <div className="insights-running-line">
+                      <span className="insights-running-label">Report</span>
+                      <span className="insights-running-value">{insightsWizard.reportLabel}</span>
+                    </div>
+                  </div>
+                  <div className="insights-spinner-wrap" aria-live="polite">
+                    <div className="insights-spinner" />
+                    <p className="insights-spinner-text">Generating insights…</p>
+                    <p className="insights-spinner-hint">Press Esc to cancel</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="insights-placeholder">Upload a report to gain some insights</p>
+                  {hasReportUploads ? (
+                    <button
+                      type="button"
+                      className="primary-btn insights-generate-btn"
+                      onClick={startGenerateInsights}
+                    >
+                      Generate insights
+                    </button>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
         </section>
