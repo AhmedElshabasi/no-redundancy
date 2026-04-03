@@ -210,7 +210,7 @@ export function RecentTransfersPanel() {
         if (fileErr) throw fileErr
         if (!deletedRows?.length) {
           throw new Error(
-            'Delete did not remove any row. If you own this file, re-run supabase/migrations/003_uploads_delete_policies.sql in the SQL editor.',
+            'Delete did not remove any file. You are not the owner of this file.',
           )
         }
 
