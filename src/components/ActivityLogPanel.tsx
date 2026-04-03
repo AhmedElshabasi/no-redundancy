@@ -18,29 +18,6 @@ export function ActivityLogPanel() {
         </div>
       </section>
 
-      <section className="al-stats">
-        <div className="al-stat red">
-          <div className="al-stat-label">Events today</div>
-          <div className="al-stat-value">146</div>
-          <div className="al-stat-sub">Across uploads, opens, and shares</div>
-        </div>
-        <div className="al-stat gold">
-          <div className="al-stat-label">Flagged</div>
-          <div className="al-stat-value">7</div>
-          <div className="al-stat-sub">Need review or follow-up</div>
-        </div>
-        <div className="al-stat blue">
-          <div className="al-stat-label">Users active</div>
-          <div className="al-stat-value">19</div>
-          <div className="al-stat-sub">Touched the workspace today</div>
-        </div>
-        <div className="al-stat green">
-          <div className="al-stat-label">Blocked attempts</div>
-          <div className="al-stat-value">8</div>
-          <div className="al-stat-sub">Stopped before access</div>
-        </div>
-      </section>
-
       <div className="al-layout">
         <section className="card">
           <div className="card-header">
@@ -194,6 +171,29 @@ export function ActivityLogPanel() {
           </section>
         </aside>
       </div>
+
+      <section className="al-stats">
+        <div className="al-stat red">
+          <div className="al-stat-label">Events today</div>
+          <div className="al-stat-value">146</div>
+          <div className="al-stat-sub">Across uploads, opens, and shares</div>
+        </div>
+        <div className="al-stat gold">
+          <div className="al-stat-label">Flagged</div>
+          <div className="al-stat-value">7</div>
+          <div className="al-stat-sub">Need review or follow-up</div>
+        </div>
+        <div className="al-stat blue">
+          <div className="al-stat-label">Users active</div>
+          <div className="al-stat-value">19</div>
+          <div className="al-stat-sub">Touched the workspace today</div>
+        </div>
+        <div className="al-stat green">
+          <div className="al-stat-label">Blocked attempts</div>
+          <div className="al-stat-value">8</div>
+          <div className="al-stat-sub">Stopped before access</div>
+        </div>
+      </section>
     </div>
   )
 }

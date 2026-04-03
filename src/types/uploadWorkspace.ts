@@ -1,3 +1,17 @@
+/** Stored on `uploads.report_status` for non-rubric batches only. */
+export type UploadReportStatus = 'todo' | 'in_progress' | 'urgent' | 'done'
+
+export const UPLOAD_REPORT_STATUS_LABELS: Record<UploadReportStatus, string> = {
+  todo: 'To do',
+  in_progress: 'In progress',
+  urgent: 'Urgent',
+  done: 'Done',
+}
+
+export function isUploadReportStatus(value: string | null | undefined): value is UploadReportStatus {
+  return value === 'todo' || value === 'in_progress' || value === 'urgent' || value === 'done'
+}
+
 export type UploadFileRow = {
   id: string
   original_name: string
@@ -21,6 +35,8 @@ export type UploadPackageRow = {
   note: string | null
   /** True when the uploader marked the batch as a rubric. */
   is_rubric?: boolean | null
+  /** Set for report uploads; null for rubrics. */
+  report_status?: UploadReportStatus | null
   created_at: string | null
   team_id?: string | null
   upload_files: UploadFileRow[] | null

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import type { UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
+import { isUploadReportStatus, UPLOAD_REPORT_STATUS_LABELS } from '@/types/uploadWorkspace'
 
 type DeleteConfirmTarget = {
   uploadId: string
@@ -109,6 +110,10 @@ function matchesPackageSearch(u: UploadPackageRow, q: string): boolean {
   for (const n of u.upload_notes || []) {
     if ((n.body ?? '').toLowerCase().includes(s)) return true
     if ((n.author_email ?? '').toLowerCase().includes(s)) return true
+  }
+  if (isUploadReportStatus(u.report_status)) {
+    const label = UPLOAD_REPORT_STATUS_LABELS[u.report_status].toLowerCase()
+    if (label.includes(s) || u.report_status.replace(/_/g, ' ').includes(s)) return true
   }
   return false
 }
@@ -499,6 +504,10 @@ export function RecentTransfersPanel() {
                                 {u.is_rubric ? (
                                   <span className="rt-rubric-tag" title="Rubric">
                                     Rubric
+                                  </span>
+                                ) : isUploadReportStatus(u.report_status) ? (
+                                  <span className="rt-status-tag" title="Report status">
+                                    {UPLOAD_REPORT_STATUS_LABELS[u.report_status]}
                                   </span>
                                 ) : null}
                               </div>

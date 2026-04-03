@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUploadsWorkspace } from '@/contexts/UploadsWorkspaceContext'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import type { UploadPackageRow } from '@/types/uploadWorkspace'
+import type { UploadPackageRow, UploadReportStatus } from '@/types/uploadWorkspace'
+import { UPLOAD_REPORT_STATUS_LABELS } from '@/types/uploadWorkspace'
 
 export type { UploadFileRow, UploadNoteRow, UploadPackageRow } from '@/types/uploadWorkspace'
 
@@ -101,6 +102,7 @@ export function FileShareDashboard() {
   const [queue, setQueue] = useState<File[]>([])
   const [note, setNote] = useState('')
   const [isRubric, setIsRubric] = useState(false)
+  const [reportStatus, setReportStatus] = useState<UploadReportStatus>('todo')
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -453,6 +455,7 @@ export function FileShareDashboard() {
           uploader_email: user.email ?? null,
           note: note.trim() || null,
           is_rubric: isRubric,
+          report_status: isRubric ? null : reportStatus,
         })
         .select('id')
         .single()
@@ -486,12 +489,13 @@ export function FileShareDashboard() {
 
       const n = queue.length
       const meta = `${n} file${n === 1 ? '' : 's'} • ${fmtSize(queueBytes)}${note.trim() ? ' • note added' : ''}${
-        isRubric ? ' • Rubric' : ''
+        isRubric ? ' • Rubric' : ` • ${UPLOAD_REPORT_STATUS_LABELS[reportStatus]}`
       }`
       setLastBatchMeta(meta)
       setQueue([])
       setNote('')
       setIsRubric(false)
+      setReportStatus('todo')
       setShowResult(true)
       showToast('Upload complete.')
       router.refresh()
@@ -694,6 +698,22 @@ export function FileShareDashboard() {
                   <span>Rubric</span>
                 </label>
               </div>
+              {!isRubric ? (
+                <div className="form-field full">
+                  <label htmlFor="upload-report-status">Status</label>
+                  <select
+                    id="upload-report-status"
+                    value={reportStatus}
+                    onChange={(e) => setReportStatus(e.target.value as UploadReportStatus)}
+                  >
+                    {(Object.keys(UPLOAD_REPORT_STATUS_LABELS) as UploadReportStatus[]).map((key) => (
+                      <option key={key} value={key}>
+                        {UPLOAD_REPORT_STATUS_LABELS[key]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="form-field full">
                 <label htmlFor="note">Share note</label>
                 <textarea

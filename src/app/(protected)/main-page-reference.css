@@ -1909,6 +1909,19 @@
   background: rgba(26, 122, 74, 0.1);
 }
 
+#main-page-root .rt-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--blue);
+  border: 1px solid rgba(0, 61, 110, 0.28);
+  background: rgba(0, 61, 110, 0.08);
+}
+
 #main-page-root .rt-user {
   display: flex;
   align-items: center;

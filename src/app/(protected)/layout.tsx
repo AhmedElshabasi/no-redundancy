@@ -57,6 +57,7 @@ export default async function ProtectedLayout({
         uploader_email,
         note,
         is_rubric,
+        report_status,
         created_at,
         team_id,
         upload_files(
