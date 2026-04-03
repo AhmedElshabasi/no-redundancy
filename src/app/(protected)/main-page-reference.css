@@ -2468,14 +2468,18 @@
     display: inline-flex;
   }
 
+  /* Topbar stays above the drawer; drawer + backdrop sit below it (top: 60px matches .topbar height). */
   #main-page-root .topbar {
     z-index: 250;
   }
 
   #main-page-root .sidebar-backdrop {
     position: fixed;
-    inset: 0;
-    z-index: 199;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 235;
     margin: 0;
     padding: 0;
     border: none;
@@ -2497,11 +2501,11 @@
   #main-page-root .sidebar {
     position: fixed;
     left: 0;
-    top: 0;
+    top: 60px;
     width: min(280px, 88vw);
-    height: 100vh;
-    height: 100dvh;
-    z-index: 200;
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+    z-index: 240;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: none;
